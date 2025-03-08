@@ -69,6 +69,71 @@ public class main {
         }
     }
 
+    public static void ringsOverlay(String imagePath1, String imagePath2, String outputImagePath) {
+        System.out.println("Ring overlay synthesis");
+
+        BufferedImage image1, image2, outputImage;
+
+        try {
+            image1 = ImageIO.read(new File(imagePath1));
+            image2 = ImageIO.read(new File(imagePath2));
+        } catch (Exception e) {
+            System.out.println("The image cannot be stored");
+            return;
+        }
+
+
+        if (image1.getWidth() != image2.getWidth() || image1.getHeight() != image2.getHeight()) {
+            System.out.println("Images have different dimensions, aborting...");
+            return;
+        }
+
+        int x_res, y_res;
+
+        int x_c, y_c;
+
+        int i, j;
+
+        final int w = 10;
+
+        x_res = image1.getWidth();
+        y_res = image1.getHeight();
+
+        outputImage = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+
+        x_c = x_res / 2;
+        y_c = y_res / 2;
+
+        for (i = 0; i < y_res; i++)
+            for (j = 0; j < x_res; j++) {
+                double d;
+                int r;
+
+                // Calculate distance to the image center
+                d = Math.sqrt((i - y_c) * (i - y_c) + (j - x_c) * (j - x_c));
+
+                // Find the ring index
+                r = (int) d / w;
+
+                // Make decision on the pixel color
+                // based on the ring index
+                if (r % 2 == 0)
+                    // Even ring - set black color
+                    outputImage.setRGB(j, i, image1.getRGB(j, i));
+                else
+                    outputImage.setRGB(j, i, image2.getRGB(j, i));
+            }
+
+        try {
+            ImageIO.write(outputImage, "bmp", new File(outputImagePath));
+            System.out.println("Ring overlay image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+
+    }
+
     public static void rings(int x_res, int y_res, int width, String path) {
         System.out.println("Ring pattern synthesis");
 
@@ -227,6 +292,66 @@ public class main {
         }
     }
 
+    public static void gridOverlay(String imagePath1, String imagePath2, String outputImagePath, int l_width, int d_x, int d_y) {
+        System.out.println("Grid overlay synthesis");
+
+        BufferedImage image1, image2, outputImage;
+
+        try {
+            image1 = ImageIO.read(new File(imagePath1));
+            image2 = ImageIO.read(new File(imagePath2));
+        } catch (Exception e) {
+            System.out.println("The image cannot be stored");
+            return;
+        }
+
+
+        if (image1.getWidth() != image2.getWidth() || image1.getHeight() != image2.getHeight()) {
+            System.out.println("Images have different dimensions, aborting...");
+            return;
+        }
+
+        int x_res = image1.getWidth();
+        int y_res = image1.getHeight();
+
+        outputImage = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int i, j, k;
+
+        // Background
+        for (i = 0; i < y_res; i++) {
+            for (j = 0; j < x_res; j++) {
+                outputImage.setRGB(j, i, image1.getRGB(j, i));
+            }
+        }
+
+        // Horizontal lines
+        for (k = d_y / 2; k < y_res; k += l_width + d_y) {
+            for (i = k; i < k + l_width && i < y_res; i++) {
+                for (j = 0; j < x_res; j++) {
+                    outputImage.setRGB(j, i, image2.getRGB(j, i));
+                }
+            }
+        }
+
+        // Vertical lines
+        for (k = d_x / 2; k < x_res; k += l_width + d_x) {
+            for (i = k; i < k + l_width && i < x_res; i++) {
+                for (j = 0; j < y_res; j++) {
+                    outputImage.setRGB(i, j, image2.getRGB(i, j));
+                }
+            }
+        }
+
+
+        try {
+            ImageIO.write(outputImage, "bmp", new File(outputImagePath));
+            System.out.println("Grid overlay image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
+
     public static void colorGrid(int x_res, int y_res, int l_width, int d_x, int d_y, int c_grid, int c_bg, String path) {
         System.out.println("Grid pattern synthesis");
 
@@ -279,6 +404,65 @@ public class main {
         }
     }
 
+    public static void chessOverlay(String imagePath1, String imagePath2, String outputImagePath, int c_size) {
+        System.out.println("Chess overlay synthesis");
+
+        BufferedImage image1, image2, outputImage;
+
+        try {
+            image1 = ImageIO.read(new File(imagePath1));
+            image2 = ImageIO.read(new File(imagePath2));
+        } catch (Exception e) {
+            System.out.println("The image cannot be stored");
+            return;
+        }
+
+
+        if (image1.getWidth() != image2.getWidth() || image1.getHeight() != image2.getHeight()) {
+            System.out.println("Images have different dimensions, aborting...");
+            return;
+        }
+
+        int x_res = image1.getWidth();
+        int y_res = image1.getHeight();
+
+        outputImage = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        // Loop variables for iterating
+        int i, j, k, l;
+
+        int c_id = 0;
+
+        // First type cells
+        for (i = 0; i < y_res; i++) {
+            for (j = 0; j < x_res; j++) {
+                outputImage.setRGB(j, i, image1.getRGB(j, i));
+            }
+        }
+
+
+        // Second type cells
+        for (k = 0; k < y_res; k += c_size) {
+            for (l = (c_id % 2) * c_size; l < x_res; l += 2 * c_size) {
+                for (j = k; j < c_size + k && j < x_res; j++) {
+                    for (i = l; i < c_size + l && i < y_res; i++) {
+                        outputImage.setRGB(j, i, image2.getRGB(j, i));
+                    }
+                }
+            }
+            c_id++;
+        }
+
+
+        try {
+            ImageIO.write(outputImage, "bmp", new File(outputImagePath));
+            System.out.println("Chess overlay image created successfully");
+        } catch (
+                IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
+
     public static void chessGrid(int x_res, int y_res, int c_size, int c_color1, int c_color2, String path) {
         System.out.println("Chess pattern synthesis");
 
@@ -308,8 +492,8 @@ public class main {
         }
 
         // Create circles
-        for (k = -b_width/2; k < y_res; k += (b_width + d_xy)) {
-            for (l = -b_width/2; l < x_res; l += (b_width + d_xy)) {
+        for (k = -b_width / 2; k < y_res; k += (b_width + d_xy)) {
+            for (l = -b_width / 2; l < x_res; l += (b_width + d_xy)) {
                 y_c = k + (b_width / 2);
                 x_c = l + (b_width / 2);
 
@@ -395,56 +579,45 @@ public class main {
 
     }
 
+
     public static void main(String[] args) {
-        // Learning
-//        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
-//        System.out.println(image.getHeight());
-//
-//        Color c = new Color(image.getRGB(0, 0));
-//        System.out.println(c.getGreen());
-//
-//        try {
-//            write(image, "jpg", new File("C1/empty.jpg"));
-//            BufferedImage sonic = read(new File("C1/sonic.jpg"));
-//            System.out.println(sonic.getHeight());
-//        }
-//        catch (IOException e) {
-//            System.out.println(e);
-//        }
-//
-//        // 1
-//        fuzzyRing(500, 550, "c1/rings.bmp");
-//
-//        int c_grid = int2RGB(0, 0, 0);
-//        int c_bg = int2RGB(100, 255, 255);
-//        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
-//
-//        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
+        // 1
+        fuzzyRings(500, 550, "c1/rings.bmp");
 
-        // 2
-//        int patternColor = int2RGB(0, 0, 0);
-//
-//        try {
-//            BufferedImage sonic = read(new File("c1/sonic.jpg"));
-//            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
-//
-//            sonic = read(new File("c1/sonic.jpg"));
-//            ringMask(sonic, "c1/ring_sonic.bmp");
-//
-//            sonic = read(new File("c1/sonic.jpg"));
-//            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
-//        } catch (IOException e) {
-//            System.out.println(e);
-//        }
+        int c_grid = int2RGB(0, 0, 0);
+        int c_bg = int2RGB(100, 255, 255);
+        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
 
-        // 3
-//        ring(500, 500, 3, "c1/rings.bmp");
+        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
+
+        //2
+        int patternColor = int2RGB(0, 0, 0);
+
+        try {
+            BufferedImage sonic = read(new File("c1/sonic.jpg"));
+            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+
+            sonic = read(new File("c1/sonic.jpg"));
+            ringsMask(sonic, "c1/ring_sonic.bmp");
+
+            sonic = read(new File("c1/sonic.jpg"));
+            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+
+        //3
+        rings(500, 500, 3, "c1/rings.bmp");
 
         int c_1 = int2RGB(0, 0, 0);
         int c_2 = int2RGB(100, 100, 100);
         circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
 
-//        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
+        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
 
+        //4
+        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
+        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
+        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
     }
 }
