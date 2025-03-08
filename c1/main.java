@@ -1,7 +1,6 @@
 package c1;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +20,7 @@ public class main {
         return (red << 16) + (green << 8) + blue;
     }
 
-    public static void ringMask(BufferedImage image, String outputImage) {
+    public static void ringsMask(BufferedImage image, String outputImage) {
         System.out.println("Ring mask synthesis");
 
         int x_res, y_res;
@@ -70,7 +69,59 @@ public class main {
         }
     }
 
-    public static void fuzzyRing(int x_res, int y_res, String path) {
+    public static void rings(int x_res, int y_res, int width, String path) {
+        System.out.println("Ring pattern synthesis");
+
+        BufferedImage image;
+
+        // Initialize the image with the specified resolution and RGB format
+        image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int x_c, y_c;
+
+        int black;
+        int white;
+
+        int i, j;
+
+
+        black = int2RGB(0, 0, 0);
+        white = int2RGB(255, 255, 255);
+
+
+        x_c = x_res / 2;
+        y_c = y_res / 2;
+
+        for (i = 0; i < y_res; i++)
+            for (j = 0; j < x_res; j++) {
+                double d;
+                int r;
+
+                // Calculate distance to the image center
+                d = Math.sqrt((i - y_c) * (i - y_c) + (j - x_c) * (j - x_c));
+
+                // Find the ring index
+                r = (int) d / width;
+
+                // Make decision on the pixel color
+                // based on the ring index
+                if (r % 2 == 0)
+                    // Even ring - set black color
+                    image.setRGB(j, i, black);
+                else
+                    // Odd ring - set white color
+                    image.setRGB(j, i, white);
+            }
+
+        try {
+            ImageIO.write(image, "bmp", new File(path));
+            System.out.println("Ring mask image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
+
+    public static void fuzzyRings(int x_res, int y_res, String path) {
         System.out.println("Ring pattern synthesis");
 
         // BufferedImage object to hold the image
@@ -186,7 +237,7 @@ public class main {
         gridMask(image, path, true, l_width, d_x, d_y, c_grid, c_bg);
     }
 
-    public static void chessMask(BufferedImage image, String outputImage, boolean overrideBg, int c_size, int c_color1, int c_color2){
+    public static void chessMask(BufferedImage image, String outputImage, boolean overrideBg, int c_size, int c_color1, int c_color2) {
         System.out.println("Chess mask synthesis");
 
         // Loop variables for iterating
@@ -237,6 +288,112 @@ public class main {
         chessMask(image, path, true, c_size, c_color1, c_color2);
     }
 
+    public static void circlesWithBg(int x_res, int y_res, int b_width, int d_xy, int c_circle, int c_bg, String path) {
+        System.out.println("Circles with background pattern synthesis");
+
+        BufferedImage image;
+        image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int x_c, y_c;
+
+
+        int i, j, k, l;
+
+
+        // Fill out background
+        for (i = 0; i < y_res; i++) {
+            for (j = 0; j < x_res; j++) {
+                image.setRGB(j, i, c_bg);
+            }
+        }
+
+        // Create circles
+        for (k = -b_width/2; k < y_res; k += (b_width + d_xy)) {
+            for (l = -b_width/2; l < x_res; l += (b_width + d_xy)) {
+                y_c = k + (b_width / 2);
+                x_c = l + (b_width / 2);
+
+                for (i = k; i < k + b_width && i < y_res; i++) {
+                    for (j = l; j < l + b_width && j < x_res; j++) {
+                        double d;
+
+                        // Calculate distance to the ring center
+                        d = Math.sqrt((i - y_c) * (i - y_c) + (j - x_c) * (j - x_c));
+
+                        // Fill circle only if distance from pixel to center is smaller than radius and if coordinates are in bound
+                        if ((d <= (double) (b_width / 2)) && i > 0 && j > 0)
+                            image.setRGB(j, i, c_circle);
+                    }
+                }
+            }
+        }
+
+
+        try {
+            ImageIO.write(image, "bmp", new File(path));
+            System.out.println("Circles with background pattern image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
+
+    public static void manyRings(int x_res, int y_res, int b_width, int r_width, String path) {
+        System.out.println("Many Rings pattern synthesis");
+
+        BufferedImage image;
+        image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int x_c, y_c;
+
+        int black;
+        int white;
+
+        int i, j, k, l;
+
+
+        black = int2RGB(0, 0, 0);
+        white = int2RGB(255, 255, 255);
+
+
+        for (k = 0; k < y_res; k += b_width) {
+            for (l = 0; l < x_res; l += b_width) {
+                y_c = k + (b_width / 2);
+                x_c = l + (b_width / 2);
+
+                for (i = k; i < k + b_width; i++) {
+                    for (j = l; j < l + b_width; j++) {
+                        double d;
+                        int r;
+
+                        // Calculate distance to the ring center
+                        d = Math.sqrt((i - y_c) * (i - y_c) + (j - x_c) * (j - x_c));
+
+                        // Find the ring index
+                        r = (int) d / r_width;
+
+                        // Make decision on the pixel color
+                        // based on the ring index
+                        if (r % 2 == 0)
+                            // Even ring - set black color
+                            image.setRGB(j, i, black);
+                        else
+                            // Odd ring - set white color
+                            image.setRGB(j, i, white);
+                    }
+                }
+            }
+        }
+
+
+        try {
+            ImageIO.write(image, "bmp", new File(path));
+            System.out.println("Many rings pattern image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+
+
+    }
 
     public static void main(String[] args) {
         // Learning
@@ -265,21 +422,29 @@ public class main {
 //        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
 
         // 2
-        int patternColor = int2RGB(0, 0, 0);
+//        int patternColor = int2RGB(0, 0, 0);
+//
+//        try {
+//            BufferedImage sonic = read(new File("c1/sonic.jpg"));
+//            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+//
+//            sonic = read(new File("c1/sonic.jpg"));
+//            ringMask(sonic, "c1/ring_sonic.bmp");
+//
+//            sonic = read(new File("c1/sonic.jpg"));
+//            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
+//        } catch (IOException e) {
+//            System.out.println(e);
+//        }
 
-        try {
-            BufferedImage sonic = read(new File("c1/sonic.jpg"));
-            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+        // 3
+//        ring(500, 500, 3, "c1/rings.bmp");
 
-            sonic = read(new File("c1/sonic.jpg"));
-            ringMask(sonic, "c1/ring_sonic.bmp");
+        int c_1 = int2RGB(0, 0, 0);
+        int c_2 = int2RGB(100, 100, 100);
+        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
 
-            sonic = read(new File("c1/sonic.jpg"));
-            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
-        } catch (IOException e) {
-            System.out.println(e);
-        }
-
+//        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
 
     }
 }
