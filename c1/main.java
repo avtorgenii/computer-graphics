@@ -627,10 +627,48 @@ public class main {
         BufferedImage image;
         image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
 
-        int x_c, y_c;
+        int x_c = x_res / 2;
+        int y_c = y_res / 2;
 
-        int i, j, k, l;
+        int i, j;
 
+        int smth;
+
+
+        for(i = 0; i < y_res; i++) {
+            for (j = 0; j < x_res; j++) {
+                double oppositeSide = Math.abs(i - y_c);
+                double side = Math.abs(j - x_c);
+                double hypotenuse = Math.sqrt(oppositeSide * oppositeSide + side * side);
+
+                double angleRads = Math.asin(oppositeSide / hypotenuse);
+                double angleDegrees = Math.toDegrees(angleRads);
+
+                int lowerBound = (int) (Math.floor(angleDegrees / angle) * angle);
+
+
+                boolean isAboveCenter = i - y_c < 0;
+                boolean isRightOfCenter = j - x_c >= 0;
+
+                if (isRightOfCenter && isAboveCenter) {
+                    smth = 0;
+                } else if (!isRightOfCenter && isAboveCenter) {
+                    smth = 1;
+                } else if (!isRightOfCenter && !isAboveCenter) {
+                    smth = 0;
+                } else {
+                    smth = 1;
+                }
+
+                if((lowerBound / angle) % 2 == smth) {
+                    image.setRGB(j, i, c_color1);
+                }
+                else {
+                    image.setRGB(j, i, c_color2);
+                }
+
+            }
+        }
 
 
 
@@ -644,45 +682,46 @@ public class main {
 
     public static void main(String[] args) {
         // 1
-//        fuzzyRings(500, 550, "c1/rings.bmp");
-//
-//        int c_grid = int2RGB(0, 0, 0);
-//        int c_bg = int2RGB(100, 255, 255);
-//        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
-//
-//        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
-//
-//        //2
-//        int patternColor = int2RGB(0, 0, 0);
-//
-//        try {
-//            BufferedImage sonic = read(new File("c1/sonic.jpg"));
-//            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
-//
-//            sonic = read(new File("c1/sonic.jpg"));
-//            ringsMask(sonic, "c1/ring_sonic.bmp");
-//
-//            sonic = read(new File("c1/sonic.jpg"));
-//            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
-//        } catch (IOException e) {
-//            System.out.println(e);
-//        }
+        fuzzyRings(500, 550, "c1/rings.bmp");
 
-        //3
-//        rings(500, 500, 3, "c1/rings.bmp");
+        int c_grid = int2RGB(0, 0, 0);
+        int c_bg = int2RGB(100, 255, 255);
+        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
+
+        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
+
+        //2
+        int patternColor = int2RGB(0, 0, 0);
+
+        try {
+            BufferedImage sonic = read(new File("c1/sonic.jpg"));
+            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+
+            sonic = read(new File("c1/sonic.jpg"));
+            ringsMask(sonic, "c1/ring_sonic.bmp");
+
+            sonic = read(new File("c1/sonic.jpg"));
+            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+
+        // 3
+        rings(500, 500, 3, "c1/rings.bmp");
 
         int c_1 = int2RGB(0, 0, 0);
-        int c_2 = int2RGB(100, 100, 100);
-//        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
-//
-//        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
+        int c_2 = int2RGB(255, 255, 255);
+        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
+
+        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
 
         diamonds(500, 500, 50, c_1, c_2, "c1/diamonds.bmp");
+        convergingPaths(500, 500, 15, c_1, c_2, "c1/converging_paths.bmp");
 
 
-        //4
-//        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
-//        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
-//        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
+        // 4
+        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
+        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
+        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
     }
 }
