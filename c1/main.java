@@ -575,49 +575,114 @@ public class main {
         } catch (IOException e) {
             System.out.println("The image cannot be stored");
         }
-
-
     }
 
+    public static void diamonds(int x_res, int y_res, int diagonal, int c_color1, int c_color2, String path){
+        System.out.println("Diamonds pattern synthesis");
+
+        BufferedImage image;
+        image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int x_c, y_c;
+
+        int i, j, k, l;
+
+        // Fill background
+        for(i = 0; i < y_res; i++) {
+            for (j = 0; j < x_res; j++) {
+                image.setRGB(j, i, c_color1);
+            }
+        }
+
+        // Fill diamonds
+        for(k = 0;k < y_res; k += diagonal) {
+            for(l = 0; l < x_res; l += diagonal) {
+                y_c = k + (diagonal / 2);
+                x_c = l + (diagonal / 2);
+                for(i = k; i < k + diagonal && i < y_res; i++) {
+                    for(j = l; j < l + diagonal && j < x_res; j++) {
+                        double d = Math.abs(i - y_c) + Math.abs(j - x_c);
+
+                        if (d <= (double) diagonal / 2) {
+                            image.setRGB(j, i, c_color2);
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        try {
+            ImageIO.write(image, "bmp", new File(path));
+            System.out.println("Diamonds pattern image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
+
+    public static void convergingPaths(int x_res, int y_res, int angle, int c_color1, int c_color2, String path){
+        System.out.println("Converging paths pattern synthesis");
+
+        BufferedImage image;
+        image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
+
+        int x_c, y_c;
+
+        int i, j, k, l;
+
+
+
+
+        try {
+            ImageIO.write(image, "bmp", new File(path));
+            System.out.println("Converging paths pattern image created successfully");
+        } catch (IOException e) {
+            System.out.println("The image cannot be stored");
+        }
+    }
 
     public static void main(String[] args) {
         // 1
-        fuzzyRings(500, 550, "c1/rings.bmp");
-
-        int c_grid = int2RGB(0, 0, 0);
-        int c_bg = int2RGB(100, 255, 255);
-        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
-
-        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
-
-        //2
-        int patternColor = int2RGB(0, 0, 0);
-
-        try {
-            BufferedImage sonic = read(new File("c1/sonic.jpg"));
-            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
-
-            sonic = read(new File("c1/sonic.jpg"));
-            ringsMask(sonic, "c1/ring_sonic.bmp");
-
-            sonic = read(new File("c1/sonic.jpg"));
-            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
-        } catch (IOException e) {
-            System.out.println(e);
-        }
+//        fuzzyRings(500, 550, "c1/rings.bmp");
+//
+//        int c_grid = int2RGB(0, 0, 0);
+//        int c_bg = int2RGB(100, 255, 255);
+//        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
+//
+//        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
+//
+//        //2
+//        int patternColor = int2RGB(0, 0, 0);
+//
+//        try {
+//            BufferedImage sonic = read(new File("c1/sonic.jpg"));
+//            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+//
+//            sonic = read(new File("c1/sonic.jpg"));
+//            ringsMask(sonic, "c1/ring_sonic.bmp");
+//
+//            sonic = read(new File("c1/sonic.jpg"));
+//            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
+//        } catch (IOException e) {
+//            System.out.println(e);
+//        }
 
         //3
-        rings(500, 500, 3, "c1/rings.bmp");
+//        rings(500, 500, 3, "c1/rings.bmp");
 
         int c_1 = int2RGB(0, 0, 0);
         int c_2 = int2RGB(100, 100, 100);
-        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
+//        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
+//
+//        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
 
-        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
+        diamonds(500, 500, 50, c_1, c_2, "c1/diamonds.bmp");
+
 
         //4
-        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
-        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
-        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
+//        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
+//        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
+//        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
     }
 }
