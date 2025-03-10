@@ -359,7 +359,7 @@ public class main {
         BufferedImage image = new BufferedImage(x_res, y_res, BufferedImage.TYPE_INT_RGB);
 
 
-        gridMask(image, path, true, l_width, d_x, d_y, c_grid, c_bg);
+        gridMask(image, path, true, l_width, d_x, d_y, c_grid, Integer.valueOf(c_bg));
     }
 
     public static void chessMask(BufferedImage image, String outputImage, boolean overrideBg, int c_size, int c_color1, int c_color2) {
