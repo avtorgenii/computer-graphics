@@ -7,6 +7,6 @@ public class twoC {
         int c_1 = Integer.parseInt(args[2]);
         int c_2 = Integer.parseInt(args[3]);
 
-        c1.main.chessGrid(500, 500, c_size, c_1, c_2, "c1/chess_grid.jpg");
+        c1.main.chessGrid(500, 500, c_size, c_1, c_2, "c1/img/chess_grid.jpg");
     }
 }

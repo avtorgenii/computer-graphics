@@ -682,46 +682,46 @@ public class main {
 
     public static void main(String[] args) {
         // 1
-        fuzzyRings(500, 550, "c1/rings.bmp");
+        fuzzyRings(500, 550, "c1/img/rings.bmp");
 
         int c_grid = int2RGB(0, 0, 0);
         int c_bg = int2RGB(100, 255, 255);
-        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/grid.bmp");
+        colorGrid(500, 500, 20, 30, 30, c_grid, c_bg, "c1/img/grid.bmp");
 
-        chessGrid(500, 500, 50, c_grid, c_bg, "c1/chess.bmp");
+        chessGrid(500, 500, 50, c_grid, c_bg, "c1/img/chess.bmp");
 
         //2
         int patternColor = int2RGB(0, 0, 0);
 
         try {
-            BufferedImage sonic = read(new File("c1/sonic.jpg"));
-            gridMask(sonic, "c1/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
+            BufferedImage sonic = read(new File("c1/src/sonic.jpg"));
+            gridMask(sonic, "c1/img/grid_sonic.bmp", false, 20, 30, 30, patternColor, null);
 
-            sonic = read(new File("c1/sonic.jpg"));
-            ringsMask(sonic, "c1/ring_sonic.bmp");
+            sonic = read(new File("c1/src/sonic.jpg"));
+            ringsMask(sonic, "c1/img/ring_sonic.bmp");
 
-            sonic = read(new File("c1/sonic.jpg"));
-            chessMask(sonic, "c1/chess_sonic.bmp", false, 50, patternColor, patternColor);
+            sonic = read(new File("c1/src/sonic.jpg"));
+            chessMask(sonic, "c1/img/chess_sonic.bmp", false, 50, patternColor, patternColor);
         } catch (IOException e) {
             System.out.println(e);
         }
 
         // 3
-        rings(500, 500, 3, "c1/rings.bmp");
+        rings(500, 500, 3, "c1/img/rings.bmp");
 
         int c_1 = int2RGB(0, 0, 0);
         int c_2 = int2RGB(255, 255, 255);
-        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/circles_bg.bmp");
+        circlesWithBg(500, 500, 50, 10, c_1, c_2, "c1/img/circles_bg.bmp");
 
-        manyRings(500, 500, 100, 10, "c1/many_rings_bg.bmp");
+        manyRings(500, 500, 100, 10, "c1/img/many_rings_bg.bmp");
 
-        diamonds(500, 500, 50, c_1, c_2, "c1/diamonds.bmp");
-        convergingPaths(500, 500, 15, c_1, c_2, "c1/converging_paths.bmp");
+        diamonds(500, 500, 50, c_1, c_2, "c1/img/diamonds.bmp");
+        convergingPaths(500, 500, 15, c_1, c_2, "c1/img/converging_paths.bmp");
 
 
         // 4
-        ringsOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/rings_overlay.bmp");
-        gridOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/grid_overlay.bmp", 20, 50, 70);
-        chessOverlay("c1/sonic.jpg", "c1/eggman.jpg", "c1/chess_overlay.bmp", 50);
+        ringsOverlay("c1/src/sonic.jpg", "c1/src/eggman.jpg", "c1/img/rings_overlay.bmp");
+        gridOverlay("c1/src/sonic.jpg", "c1/src/eggman.jpg", "c1/img/grid_overlay.bmp", 20, 50, 70);
+        chessOverlay("c1/src/sonic.jpg", "c1/src/eggman.jpg", "c1/img/chess_overlay.bmp", 50);
     }
 }
