@@ -134,7 +134,7 @@ public class main {
 
     }
 
-    public static void rings(int x_res, int y_res, int width, String path) {
+    public static void rings(int x_res, int y_res, int width, int incr, String path) {
         System.out.println("Ring pattern synthesis");
 
         BufferedImage image;
@@ -157,7 +157,7 @@ public class main {
         x_c = x_res / 2;
         y_c = y_res / 2;
 
-        for (i = 0; i < y_res; i++)
+        for (i = 0; i < y_res; i++) {
             for (j = 0; j < x_res; j++) {
                 double d;
                 int r;
@@ -166,7 +166,13 @@ public class main {
                 d = Math.sqrt((i - y_c) * (i - y_c) + (j - x_c) * (j - x_c));
 
                 // Find the ring index
-                r = (int) d / width;
+                r = 0;
+                int currentRadius = width;
+                while(d >= currentRadius){
+                    r++;
+                    currentRadius += width + r * incr;
+                }
+
 
                 // Make decision on the pixel color
                 // based on the ring index
@@ -177,6 +183,7 @@ public class main {
                     // Odd ring - set white color
                     image.setRGB(j, i, white);
             }
+        }
 
         try {
             ImageIO.write(image, "bmp", new File(path));
@@ -371,7 +378,7 @@ public class main {
         int x_res = image.getWidth();
         int y_res = image.getHeight();
 
-        int c_id = 0;
+        int r_id = 0;
 
         // First type cells
         if (overrideBg) {
@@ -384,14 +391,14 @@ public class main {
 
         // Second type cells
         for (k = 0; k < y_res; k += c_size) {
-            for (l = (c_id % 2) * c_size; l < x_res; l += 2 * c_size) {
+            for (l = (r_id % 2) * c_size; l < x_res; l += 2 * c_size) {
                 for (j = k; j < c_size + k && j < x_res; j++) {
                     for (i = l; i < c_size + l && i < y_res; i++) {
                         image.setRGB(i, j, c_color2);
                     }
                 }
             }
-            c_id++;
+            r_id++;
         }
 
 
@@ -544,8 +551,8 @@ public class main {
                 y_c = k + (b_width / 2);
                 x_c = l + (b_width / 2);
 
-                for (i = k; i < k + b_width; i++) {
-                    for (j = l; j < l + b_width; j++) {
+                for (i = k; i < k + b_width && i < y_res; i++) {
+                    for (j = l; j < l + b_width && j < x_res; j++) {
                         double d;
                         int r;
 
@@ -577,7 +584,7 @@ public class main {
         }
     }
 
-    public static void diamonds(int x_res, int y_res, int diagonal, int c_color1, int c_color2, String path){
+    public static void diamonds(int x_res, int y_res, int diagonal, int c_color1, int c_color2, String path) {
         System.out.println("Diamonds pattern synthesis");
 
         BufferedImage image;
@@ -588,19 +595,19 @@ public class main {
         int i, j, k, l;
 
         // Fill background
-        for(i = 0; i < y_res; i++) {
+        for (i = 0; i < y_res; i++) {
             for (j = 0; j < x_res; j++) {
                 image.setRGB(j, i, c_color1);
             }
         }
 
         // Fill diamonds
-        for(k = 0;k < y_res; k += diagonal) {
-            for(l = 0; l < x_res; l += diagonal) {
+        for (k = 0; k < y_res; k += diagonal) {
+            for (l = 0; l < x_res; l += diagonal) {
                 y_c = k + (diagonal / 2);
                 x_c = l + (diagonal / 2);
-                for(i = k; i < k + diagonal && i < y_res; i++) {
-                    for(j = l; j < l + diagonal && j < x_res; j++) {
+                for (i = k; i < k + diagonal && i < y_res; i++) {
+                    for (j = l; j < l + diagonal && j < x_res; j++) {
                         double d = Math.abs(i - y_c) + Math.abs(j - x_c);
 
                         if (d <= (double) diagonal / 2) {
@@ -612,7 +619,6 @@ public class main {
         }
 
 
-
         try {
             ImageIO.write(image, "bmp", new File(path));
             System.out.println("Diamonds pattern image created successfully");
@@ -621,7 +627,7 @@ public class main {
         }
     }
 
-    public static void convergingPaths(int x_res, int y_res, int angle, int c_color1, int c_color2, String path){
+    public static void convergingPaths(int x_res, int y_res, int angle, int c_color1, int c_color2, String path) {
         System.out.println("Converging paths pattern synthesis");
 
         BufferedImage image;
@@ -635,7 +641,7 @@ public class main {
         int smth;
 
 
-        for(i = 0; i < y_res; i++) {
+        for (i = 0; i < y_res; i++) {
             for (j = 0; j < x_res; j++) {
                 double oppositeSide = Math.abs(i - y_c);
                 double side = Math.abs(j - x_c);
@@ -660,16 +666,14 @@ public class main {
                     smth = 1;
                 }
 
-                if((lowerBound / angle) % 2 == smth) {
+                if ((lowerBound / angle) % 2 == smth) {
                     image.setRGB(j, i, c_color1);
-                }
-                else {
+                } else {
                     image.setRGB(j, i, c_color2);
                 }
 
             }
         }
-
 
 
         try {
@@ -707,7 +711,7 @@ public class main {
         }
 
         // 3
-        rings(500, 500, 3, "c1/img/rings.bmp");
+        rings(500, 500, 3, 3, "c1/img/bigger_rings.bmp");
 
         int c_1 = int2RGB(0, 0, 0);
         int c_2 = int2RGB(255, 255, 255);
@@ -716,7 +720,7 @@ public class main {
         manyRings(500, 500, 100, 10, "c1/img/many_rings_bg.bmp");
 
         diamonds(500, 500, 50, c_1, c_2, "c1/img/diamonds.bmp");
-        convergingPaths(500, 500, 15, c_1, c_2, "c1/img/converging_paths.bmp");
+        convergingPaths(500, 500, 5, c_1, c_2, "c1/img/converging_paths.bmp");
 
 
         // 4
