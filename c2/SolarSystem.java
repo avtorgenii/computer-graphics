@@ -1,14 +1,6 @@
 package c2;
 
 import java.awt.*;
-//import java.awt.Color;
-//import java.awt.BasicStroke;
-//import java.awt.Container;
-//import java.awt.Dimension;
-//import java.awt.Graphics;
-//import java.awt.Graphics2D;
-//import java.awt.Polygon;
-
 import java.lang.Thread;
 import java.lang.InterruptedException;
 

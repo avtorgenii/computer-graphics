@@ -22,7 +22,7 @@ public class Clock {
 
 	public static void main(String[] args) 
    {
-      SmpWindow wnd = new SmpWindow();
+       Window wnd = new Window();
       
       // Closing window terminates the program      
       wnd.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -172,7 +172,7 @@ class Window extends JFrame
     public Window()
     {
     	Container  contents = getContentPane(); 
-    	contents.add( new SolarDrawWndPane() );
+    	contents.add( new DrawWndPane() );
     	setTitle( "Solar system");
     }
 }
