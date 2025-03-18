@@ -117,11 +117,7 @@ class DrawWndPane extends JPanel
        g.drawLine( xw, yw, xz, yz );
        g.fillOval(xz - (int)r_weight, yz - (int)r_weight, (int)(2 * r_weight), (int)(2 * r_weight));
    }
-   
-   public void paint( Graphics g )
-   {
-      paintComponent( g );
-   }
+
 
    public void paintComponent( Graphics g )
    {  
