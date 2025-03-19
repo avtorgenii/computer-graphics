@@ -9,7 +9,7 @@ public class Billiard {
     public static class BilliardPanel extends JPanel {
         // Table stuff
         final int TABLE_EDGE_WIDTH = 20;
-        final double FRICTION_COEFFICIENT = 0.002;
+        final double FRICTION_COEFFICIENT = 0.000;
         final Color TABLE_EDGE_COLOR = new Color(153, 76, 0);
         final Color TABLE_COLOR = new Color(0, 204, 102);
 
@@ -26,6 +26,7 @@ public class Billiard {
         final int BALL_RADIUS = 20;
         final int BALLS_COUNT = 10;
         ArrayList<Ball> balls = new ArrayList<>();
+        final int DISTANCE_THRESHOLD = BALL_RADIUS * 2;
 
         class Ball {
             double x, y;
@@ -90,13 +91,13 @@ public class Billiard {
                     double dy = ball2.y - ball1.y;
                     double d = Math.sqrt(dx * dx + dy * dy);
 
-                    if (d <= BALL_RADIUS * 2) {
+                    if (d <= DISTANCE_THRESHOLD) {
                         // Parts of normal vector pointing from ball2 to ball1
                         double nx = dx / d;
                         double ny = dy / d;
 
                         // To avoid balls sticking to each other
-                        double overlapDepth = 2 * BALL_RADIUS - d;
+                        double overlapDepth = DISTANCE_THRESHOLD - d;
                         ball1.x -= overlapDepth * nx / 2;
                         ball1.y -= overlapDepth * ny / 2;
                         ball2.x += overlapDepth * nx / 2;
@@ -148,6 +149,7 @@ public class Billiard {
                 startSpeedY = MIN_START_SPEED + (Math.random() * (MAX_START_SPEED - MIN_START_SPEED));
                 ballColor = new Color(random.nextInt(0, 255), random.nextInt(0, 255), random.nextInt(0, 255));
 
+                // Add ball to the table
                 balls.add(new Ball(x, y, startSpeedX, startSpeedY, ballColor));
             }
         }

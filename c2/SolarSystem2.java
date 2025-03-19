@@ -31,7 +31,7 @@ class SolarDrawWndPane2 extends JPanel {
             11646, // Saturn
             50724,  // Uranus
             49528,  // Neptune
-            5000    // Pluto
+            2300 * 2    // Pluto
     };
 
     final double sunDiameterKm = 1392000 / 100.0;
@@ -69,6 +69,7 @@ class SolarDrawWndPane2 extends JPanel {
             double r = orbitRadius[i];
             double w = orbitalSpeedsKmPerS[i] / r;
             double theta = w * seconds;
+            // Coordinates of planet's center
             int x = (int) (center_x + r * Math.cos(theta));
             int y = (int) (center_y + r * Math.sin(theta));
 
@@ -84,7 +85,7 @@ class SolarDrawWndPane2 extends JPanel {
 
         // Moon
         double moon_w = moonOrbitalSpeedKmPerS / moonOrbitRadius;
-        double moonTheta = moon_w * seconds;
+        double moonTheta = moon_w * seconds * 50.0;
         int moon_x = (int) (earth_x + moonOrbitRadius * Math.cos(moonTheta));
         int moon_y = (int) (earth_y + moonOrbitRadius * Math.sin(moonTheta));
 
@@ -110,9 +111,11 @@ class SolarDrawWndPane2 extends JPanel {
         center_x = size.width / 2;
         center_y = size.height / 2;
 
+        // Size factor for scaling planets
         int minSize = Math.min(size.width, size.height);
         double sizeFactor = (double) minSize / 35 / sunDiameterKm;
 
+        // Orbits
         double[] orbitRadius = new double[planetDiametersKm.length];
         for (int i = 0; i < orbitRadius.length; i++) {
             orbitRadius[i] = (i + 1) * (minSize / (2.0 * orbitRadius.length));
@@ -145,7 +148,7 @@ public class SolarSystem2 {
 
         while (true) {
             try {
-                Thread.sleep(5);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 System.out.println("Interrupted");
             }
