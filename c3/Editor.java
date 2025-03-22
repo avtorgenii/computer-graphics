@@ -6,51 +6,70 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class Editor {
+    Color backgroundColor = Color.WHITE;
+
     public abstract class Figure {
         Color color;
+        int startX, startY, endX, endY;
 
         Figure(Color color) {
             this.color = color;
         }
 
-        public void save() {}
-
-        public void startDraw(Graphics2D g2d, int x, int y) {
-            g2d.setXORMode(color);
+        public void save() {
         }
 
-        public void draw(Graphics2D g2d, int x, int y) {}
+        public void startDraw(Graphics2D g2d, int x, int y) {
+        }
+
+        public void draw(Graphics2D g2d, int x, int y) {
+            g2d.setXORMode(backgroundColor); // somehow this mode is not preserved across func calls
+            g2d.setStroke(new BasicStroke(5));
+        }
 
         public void finishDraw(Graphics2D g2d, int x, int y) {
             g2d.setPaintMode();
+            g2d.setColor(color);
         }
     }
 
     public class Line extends Figure {
-        int startX, startY, endX, endY;
-
         Line(Color color) {
             super(color);
         }
 
         @Override
         public void startDraw(Graphics2D g2d, int x, int y) {
-            super.startDraw(g2d, x, y);
             startX = x;
             startY = y;
+            endX = x;
+            endY = y;
         }
 
         @Override
         public void draw(Graphics2D g2d, int x, int y) {
             super.draw(g2d, x, y);
-            g2d.drawLine(startX, startY, x, y);
+            // Erase previous
+            g2d.drawLine(startX, startY, endX, endY);
+
+            endX = x;
+            endY = y;
+
+            // Draw new
+            g2d.drawLine(startX, startY, endX, endY);
         }
 
         @Override
         public void finishDraw(Graphics2D g2d, int x, int y) {
+            // Erase previous
+            g2d.drawLine(startX, startY, endX, endY);
+
             super.finishDraw(g2d, x, y);
             endX = x;
             endY = y;
+
+            // Draw new permanent
+            g2d.drawLine(startX, startY, endX, endY);
         }
     }
 
@@ -58,15 +77,85 @@ public class Editor {
         Rectangle(Color color) {
             super(color);
         }
+
+        @Override
+        public void startDraw(Graphics2D g2d, int x, int y) {
+            startX = x;
+            startY = y;
+            endX = x;
+            endY = y;
+        }
+
+        @Override
+        public void draw(Graphics2D g2d, int x, int y) {
+            super.draw(g2d, x, y);
+
+            // Erase previous
+            g2d.drawRect(startX, startY, endX- startX, endY - startY);
+
+            endX = x;
+            endY = y;
+
+            // Draw new
+            g2d.drawRect(startX, startY, endX- startX, endY - startY);
+        }
+
+        @Override
+        public void finishDraw(Graphics2D g2d, int x, int y) {
+            // Erase previous
+            g2d.drawRect(startX, startY, endX- startX, endY - startY);
+
+            super.finishDraw(g2d, x, y);
+            endX = x;
+            endY = y;
+
+            // Draw new permanent
+            g2d.drawRect(startX, startY, endX- startX, endY - startY);
+        }
     }
 
     public class Circle extends Figure {
         Circle(Color color) {
             super(color);
         }
+
+        @Override
+        public void startDraw(Graphics2D g2d, int x, int y) {
+            startX = x;
+            startY = y;
+            endX = x;
+            endY = y;
+        }
+
+        @Override
+        public void draw(Graphics2D g2d, int x, int y) {
+            super.draw(g2d, x, y);
+
+            // Erase previous
+            g2d.drawOval(startX, startY, endX- startX, endY - startY);
+
+            endX = x;
+            endY = y;
+
+            // Draw new
+            g2d.drawOval(startX, startY, endX- startX, endY - startY);
+        }
+
+        @Override
+        public void finishDraw(Graphics2D g2d, int x, int y) {
+            // Erase previous
+            g2d.drawOval(startX, startY, endX- startX, endY - startY);
+
+            super.finishDraw(g2d, x, y);
+            endX = x;
+            endY = y;
+
+            // Draw new permanent
+            g2d.drawOval(startX, startY, endX- startX, endY - startY);
+        }
     }
 
-    static class EditorPane extends JPanel {
+    class EditorPane extends JPanel {
         JRadioButton lineButton, circleButton, squareButton;
         JButton colorButton;
         ButtonGroup figureGroup;
@@ -112,18 +201,28 @@ public class Editor {
         public Color getCurrentColor() {
             return currentColor;
         }
+
+        public Figure createSelectedFigure() {
+            if (circleButton.isSelected()) {
+                return new Circle(getCurrentColor());
+            } else if (squareButton.isSelected()) {
+                return new Rectangle(getCurrentColor());
+            } else {
+                return new Line(getCurrentColor());
+            }
+        }
     }
 
     class DrawingPane extends JPanel {
         Figure figure;
 
-        DrawingPane() {
+        DrawingPane(EditorPane editorPane) {
             setBackground(Color.WHITE);
 
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    figure = new Line(Color.BLUE);
+                    figure = editorPane.createSelectedFigure();
                     Graphics2D g2d = (Graphics2D) getGraphics();
 
                     figure.startDraw(g2d, e.getX(), e.getY());
@@ -171,8 +270,8 @@ public class Editor {
             setJMenuBar(menuBar);
 
             // Panes
-            DrawingPane drawingPane = new DrawingPane();
             EditorPane editorPane = new EditorPane();
+            DrawingPane drawingPane = new DrawingPane(editorPane);
 
             add(drawingPane, BorderLayout.CENTER);
             add(editorPane, BorderLayout.SOUTH);
