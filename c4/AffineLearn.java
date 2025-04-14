@@ -8,7 +8,7 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.AffineTransform;
+import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -217,13 +217,21 @@ class Editor extends JPanel {
 
     // Poster elements classes
     public class PosterElement {
-        protected Point upLeftCorner;
-        protected int width;
-        protected int height;
+        protected Color color;
+        protected int absoluteWidth;
+        protected int absoluteHeight;
+        protected int initialWidth;
+        protected int initialHeight;
         protected boolean selected = false;
+        protected int baseRotationAngleDegree = 5;
+        protected AffineTransform transformation;
+        protected final int vertexTolPx = 30;
+        protected final double scaleFactor = 0.01;
 
-        PosterElement(int dropX, int dropY) {
-            this.upLeftCorner = new Point(dropX, dropY);
+        PosterElement(int dropX, int dropY, Color color) {
+            transformation = new AffineTransform();
+            transformation.translate(dropX, dropY);
+            this.color = color;
         }
 
         public void bringToFront(List<PosterElement> elements) {
@@ -233,27 +241,54 @@ class Editor extends JPanel {
             }
         }
 
-        public Point getCenter() {
-            return new Point(0, 0);
-        }
-
-        public void draw(Graphics g) {
+        public Graphics2D draw(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(this.color);
+            g2.setTransform(transformation);
             if (selected) {
-                drawBorder(g);
+                drawBorder(g2);
             }
+
+            return g2;
         }
 
-        public void move(int x, int y) {
-            // Calculate the center offset
-            int centerOffsetX = width / 2;
-            int centerOffsetY = height / 2;
+        public void rotate(int notch) {
+            double angle = Math.toRadians((-1) * notch * baseRotationAngleDegree);
 
-            // Create a translation that positions the element so its center is at the cursor
-            AffineTransform transform = new AffineTransform();
-            transform.setToTranslation(x - centerOffsetX, y - centerOffsetY);
+            int centerOffsetX = initialWidth / 2;
+            int centerOffsetY = initialHeight / 2;
 
-            // Apply the transform to create a new point at the desired position
-            transform.transform(new Point(0, 0), upLeftCorner);
+            transformation.rotate(angle, centerOffsetX, centerOffsetY);
+        }
+
+        public void move(int dx, int dy) {
+            // Create translation transform
+            AffineTransform translate = AffineTransform.getTranslateInstance(dx, dy);
+            // First move - then rotate
+            transformation.preConcatenate(translate);
+        }
+
+        public void scale(int dx, int dy, Point mouseLoc) {
+            try {
+                // Get mouse position in element's coordinate system
+                Point2D inversePoint = new Point2D.Double();
+                AffineTransform inverse = transformation.createInverse();
+                inverse.transform(mouseLoc, inversePoint);
+
+                int newWidth = absoluteWidth + dx;
+                int newHeight = absoluteHeight + dy;
+
+
+                double ratioX = (double) newWidth / (double) absoluteWidth;
+                double ratioY = (double) newHeight / (double) absoluteHeight;
+
+                absoluteWidth = newWidth;
+                absoluteHeight = newHeight;
+
+                transformation.scale(ratioX, ratioY);
+            } catch (NoninvertibleTransformException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public void setSelected(boolean selected, List<PosterElement> elements) {
@@ -264,21 +299,47 @@ class Editor extends JPanel {
         }
 
         public boolean trySelect(int mouseX, int mouseY) {
-            // Works for rectangular shapes
-            boolean inside = mouseX >= upLeftCorner.x && mouseX <= upLeftCorner.x + width &&
-                    mouseY >= upLeftCorner.y && mouseY <= upLeftCorner.y + height;
+            try {
+                Point2D mousePoint = new Point2D.Double(mouseX, mouseY);
+                Point2D inversePoint = new Point2D.Double();
+                AffineTransform inverse = transformation.createInverse();
+                inverse.transform(mousePoint, inversePoint);
 
-            this.selected = inside;
-            return inside;
+                boolean inside = inversePoint.getX() >= 0 && inversePoint.getX() <= initialWidth &&
+                        inversePoint.getY() >= 0 && inversePoint.getY() <= initialHeight;
+
+                this.selected = inside;
+                return inside;
+            } catch (NoninvertibleTransformException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        public void drawBorder(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create(); // create copy to avoid side effects
-            g2.setColor(Color.RED);
+        public boolean nearVertex(int mouseX, int mouseY) {
+            try {
+                Point2D mousePoint = new Point2D.Double(mouseX, mouseY);
+                Point2D inversePoint = new Point2D.Double();
+                AffineTransform inverse = transformation.createInverse();
+                inverse.transform(mousePoint, inversePoint);
+
+                boolean nearVertex;
+
+                nearVertex = (inversePoint.distance(0, 0) <= vertexTolPx || inversePoint.distance(initialWidth, 0) <= vertexTolPx
+                        || inversePoint.distance(0, initialHeight) <= vertexTolPx || inversePoint.distance(initialWidth, initialHeight) <= vertexTolPx);
+
+                return nearVertex;
+            } catch (NoninvertibleTransformException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void drawBorder(Graphics2D g2) {
+            Graphics2D g2Copy = (Graphics2D) g2.create(); // create copy to avoid side effects
+            g2Copy.setColor(Color.RED);
 
             // Create a dashed stroke
             float[] dashPattern = {5.0f, 5.0f};
-            g2.setStroke(new BasicStroke(
+            g2Copy.setStroke(new BasicStroke(
                     2,                     // thickness
                     BasicStroke.CAP_BUTT,
                     BasicStroke.JOIN_MITER,
@@ -288,64 +349,129 @@ class Editor extends JPanel {
             ));
 
             // Draw the border slightly outside the element for visibility
-            g2.drawRect(upLeftCorner.x - 2, upLeftCorner.y - 2, width + 4, height + 4);
+            g2Copy.drawRect(-2, -2, initialWidth + 4, initialHeight + 4);
+            g2Copy.dispose();
         }
     }
 
     public class ImageElement extends PosterElement {
         Image img;
 
-        ImageElement(int dropX, int dropY, Image img) {
-            super(dropX, dropY);
+        ImageElement(int dropX, int dropY, Color color, Image img) {
+            super(dropX, dropY, color);
             this.img = img;
-            this.width = img.getWidth(null);
-            this.height = img.getHeight(null);
+            this.initialWidth = img.getWidth(null);
+            this.initialHeight = img.getHeight(null);
+            this.absoluteWidth = initialWidth;
+            this.absoluteHeight = initialHeight;
         }
 
-        public void draw(Graphics g) {
-            super.draw(g);
-            g.drawImage(img, upLeftCorner.x, upLeftCorner.y, null);
+        public Graphics2D draw(Graphics g) {
+            Graphics2D g2 = super.draw(g);
+            g2.drawImage(img, 0, 0, null);
+            return g2;
         }
     }
 
     public class ShapeElement extends PosterElement {
-        boolean isCircle;
+        private Shape shape;
+        private boolean isCircle;
 
-        ShapeElement(int dropX, int dropY, boolean isCircle) {
-            super(dropX, dropY);
+        ShapeElement(int dropX, int dropY, Color color, boolean isCircle) {
+            super(dropX, dropY, color);
+            this.initialWidth = 150;
+            this.initialHeight = 150;
+            this.absoluteWidth = initialWidth;
+            this.absoluteHeight = initialHeight;
             this.isCircle = isCircle;
-            this.width = 150;
-            this.height = 150;
+            if (isCircle) {
+                shape = new Ellipse2D.Double(0, 0, absoluteWidth, absoluteHeight);
+            } else {
+                shape = new Rectangle2D.Double(0, 0, absoluteWidth, absoluteHeight);
+            }
         }
 
-        public void draw(Graphics g) {
-            super.draw(g);
+        public Graphics2D draw(Graphics g) {
+            Graphics2D g2 = super.draw(g);
+            g2.fill(shape);
+            g2.dispose();
+            return g2;
+        }
+
+        public void drawBorder(Graphics2D g2) {
+            Graphics2D g2Copy = (Graphics2D) g2.create();
+            g2Copy.setColor(Color.RED);
+
+            // Create a dashed stroke
+            float[] dashPattern = {5.0f, 5.0f};
+            g2Copy.setStroke(new BasicStroke(
+                    2,                   // thickness
+                    BasicStroke.CAP_BUTT,
+                    BasicStroke.JOIN_MITER,
+                    10.0f,               // miter limit
+                    dashPattern,         // dash pattern
+                    0.0f                // dash phase
+            ));
+
+            // Draw at origin - transformation handles position
             if (isCircle) {
-                g.fillOval(upLeftCorner.x, upLeftCorner.y, width, height);
+                g2Copy.drawOval(-2, -2, initialWidth + 4, initialHeight + 4);
             } else {
-                g.fillRect(upLeftCorner.x, upLeftCorner.y, width, height);
+                g2Copy.drawRect(-2, -2, initialWidth + 4, initialHeight + 4);
             }
+            g2Copy.dispose();
         }
 
         public boolean trySelect(int mouseX, int mouseY) {
             if (isCircle) {
-                int centerX = upLeftCorner.x + width / 2;
-                int centerY = upLeftCorner.y + height / 2;
-                int radius = width / 2;
+                try {
+                    // Transform the mouse point to object space
+                    Point2D mousePoint = new Point2D.Double(mouseX, mouseY);
+                    Point2D inversePoint = new Point2D.Double();
+                    AffineTransform inverse = transformation.createInverse();
+                    inverse.transform(mousePoint, inversePoint);
 
-                double dx = mouseX - centerX;
-                double dy = mouseY - centerY;
+                    // For circle, check if within radius
+                    double dx = inversePoint.getX() - (double) initialWidth / 2;
+                    double dy = inversePoint.getY() - (double) initialHeight / 2;
+                    boolean inside = dx * dx + dy * dy <= ((double) initialWidth / 2) * ((double) initialHeight / 2);
 
-                boolean inside = dx * dx + dy * dy <= radius * radius;
-                this.selected = inside;
-                return inside;
+                    this.selected = inside;
+                    return inside;
+                } catch (NoninvertibleTransformException e) {
+                    return false;
+                }
             } else {
                 return super.trySelect(mouseX, mouseY);
             }
         }
+
+        public boolean nearVertex(int mouseX, int mouseY) {
+            if (isCircle) {
+                try {
+                    Point2D mousePoint = new Point2D.Double(mouseX, mouseY);
+                    Point2D inversePoint = new Point2D.Double();
+                    AffineTransform inverse = transformation.createInverse();
+                    inverse.transform(mousePoint, inversePoint);
+
+                    double radius = Math.min(initialWidth / 2.0, initialHeight / 2.0);
+
+                    double dx = inversePoint.getX();
+                    double dy = inversePoint.getY();
+                    double distance = Math.sqrt(dx * dx + dy * dy);
+
+                    return Math.abs(distance - radius) <= vertexTolPx;
+                } catch (NoninvertibleTransformException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else {
+                return super.nearVertex(mouseX, mouseY);
+            }
+        }
     }
 
-    // Drawing Pane - Right panel for poster composition
+    // Drawing Pane - Right panel for poster
     class DrawingPane extends JPanel {
         private final List<PosterElement> elements = new ArrayList<>();
         private final ControlPane controlPane;
@@ -369,7 +495,7 @@ class Editor extends JPanel {
                         // Check if the data is an image
                         if (support.isDataFlavorSupported(DataFlavor.imageFlavor)) {
                             Image img = (Image) support.getTransferable().getTransferData(DataFlavor.imageFlavor);
-                            elements.add(new ImageElement(dropPoint.x, dropPoint.y, img));
+                            elements.add(new ImageElement(dropPoint.x, dropPoint.y, controlPane.currentColor, img));
                             repaint();
                             return true;
                         }
@@ -379,12 +505,12 @@ class Editor extends JPanel {
 
                             if (shapeInfo.contains("circle")) {
                                 // Create a circle shape
-                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, true));
+                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, controlPane.currentColor,true));
                                 repaint();
                                 return true;
                             } else if (shapeInfo.contains("square")) {
                                 // Create a square shape
-                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, false));
+                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, controlPane.currentColor, false));
                                 repaint();
                                 return true;
                             }
@@ -403,13 +529,12 @@ class Editor extends JPanel {
 
             addMouseListener(adapter);
             addMouseMotionListener(adapter);
+            addMouseWheelListener(adapter);
         }
 
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            g.setColor(controlPane.currentColor);
-
             for (PosterElement element : elements) {
                 element.draw(g);
             }

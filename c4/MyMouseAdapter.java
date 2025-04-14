@@ -3,6 +3,7 @@ package c4;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,10 +14,13 @@ public class MyMouseAdapter extends MouseAdapter {
     private PosterElement selectedElement;
     private final Runnable repaintCallback;
     private boolean moving = false;
+    private boolean scaling = true;
+    private Point lastMousePosition;
 
     MyMouseAdapter(List<PosterElement> elements, Runnable repaintCallback) {
         this.elements = elements;
         this.repaintCallback = repaintCallback;
+        this.lastMousePosition = null;
     }
 
     @Override
@@ -27,8 +31,12 @@ public class MyMouseAdapter extends MouseAdapter {
         if (selectedElement != null) {
             // Check if in bounds of selected
             if (selectedElement.trySelect(x, y)) {
-                moving = true;
-                System.out.println("x: " + x + ", y: " + y + ", moving: " + moving + ", selectedElement: " + selectedElement);
+                if (selectedElement.nearVertex(x, y)) {
+                    scaling = true;
+                    System.out.println("scaling");
+                } else {
+                    moving = true;
+                }
             }
         }
     }
@@ -38,11 +46,30 @@ public class MyMouseAdapter extends MouseAdapter {
         int x = e.getX();
         int y = e.getY();
 
-        if (moving) {
-            selectedElement.move(x, y);
-            System.out.println(
-                    "Moving " + selectedElement + " to " + x + ", " + y
-            );
+        if ((moving || scaling) && lastMousePosition != null && selectedElement != null) {
+            int deltaX = x - lastMousePosition.x;
+            int deltaY = y - lastMousePosition.y;
+
+            if (moving) {
+                selectedElement.move(deltaX, deltaY);
+            }
+            else {
+                selectedElement.scale(deltaX, deltaY, e.getPoint());
+            }
+
+            lastMousePosition.setLocation(x, y);
+            repaintCallback.run();
+        } else if (lastMousePosition == null) {
+            lastMousePosition = new Point(x, y);
+        }
+    }
+
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent e) {
+        int notch = e.getWheelRotation();
+
+        if (selectedElement != null) {
+            selectedElement.rotate(notch);
             repaintCallback.run();
         }
     }
@@ -51,6 +78,7 @@ public class MyMouseAdapter extends MouseAdapter {
     public void mouseReleased(MouseEvent e) {
         int x = e.getX();
         int y = e.getY();
+        lastMousePosition = null;
 
         // If element was moved, do not unselect
         if (moving) {
@@ -66,7 +94,7 @@ public class MyMouseAdapter extends MouseAdapter {
 
                 // Select element
                 for (PosterElement pe : elements.reversed()) { // reverse because we want to select element that is closer to front
-                    if (pe.trySelect(x, y)) {
+                    if (pe.trySelect(x, y) || pe.nearVertex(x, y)) {
                         selectedElement = pe;
                         pe.setSelected(true, elements);
                         repaintCallback.run();
