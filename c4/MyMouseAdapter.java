@@ -10,11 +10,11 @@ import java.util.List;
 import c4.Editor.PosterElement;
 
 public class MyMouseAdapter extends MouseAdapter {
-    private List<PosterElement> elements = new ArrayList<>();
+    private final List<PosterElement> elements;
     private PosterElement selectedElement;
     private final Runnable repaintCallback;
     private boolean moving = false;
-    private boolean scaling = true;
+    private boolean scaling = false;
     private Point lastMousePosition;
 
     MyMouseAdapter(List<PosterElement> elements, Runnable repaintCallback) {
@@ -33,7 +33,6 @@ public class MyMouseAdapter extends MouseAdapter {
             if (selectedElement.trySelect(x, y)) {
                 if (selectedElement.nearVertex(x, y)) {
                     scaling = true;
-                    System.out.println("scaling");
                 } else {
                     moving = true;
                 }
@@ -46,14 +45,13 @@ public class MyMouseAdapter extends MouseAdapter {
         int x = e.getX();
         int y = e.getY();
 
-        if ((moving || scaling) && lastMousePosition != null && selectedElement != null) {
+        if (lastMousePosition != null && selectedElement != null) {
             int deltaX = x - lastMousePosition.x;
             int deltaY = y - lastMousePosition.y;
 
             if (moving) {
                 selectedElement.move(deltaX, deltaY);
-            }
-            else {
+            } else if (scaling) {
                 selectedElement.scale(deltaX, deltaY, e.getPoint());
             }
 
@@ -69,7 +67,7 @@ public class MyMouseAdapter extends MouseAdapter {
         int notch = e.getWheelRotation();
 
         if (selectedElement != null) {
-            selectedElement.rotate(notch);
+            selectedElement.rotate(notch, false);
             repaintCallback.run();
         }
     }
@@ -83,7 +81,10 @@ public class MyMouseAdapter extends MouseAdapter {
         // If element was moved, do not unselect
         if (moving) {
             moving = false;
-        } else {
+        } else if (scaling) {
+            scaling = false;
+        }
+        else {
             if (e.getButton() == MouseEvent.BUTTON1) { // left click
                 // Unselect existing
                 if (selectedElement != null) {

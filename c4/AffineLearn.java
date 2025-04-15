@@ -2,6 +2,7 @@ package c4;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -175,6 +176,19 @@ class Editor extends JPanel {
     static class ControlPane extends JPanel {
         private JButton colorButton;
         private Color currentColor = Color.BLACK;
+        private List<PosterElement> elements;
+        private Runnable repaintCallback;
+
+
+        public void setElementsAndRepaint(List<PosterElement> elements, Runnable repaintCallback) {
+            this.elements = elements;
+            this.repaintCallback = repaintCallback;
+        }
+
+        public PosterElement getSelectedElement() {
+            PosterElement selectedElement = elements.stream().filter(e -> e.selected).findFirst().orElse(null);
+            return selectedElement;
+        }
 
         public ControlPane() {
             setLayout(new FlowLayout(FlowLayout.CENTER));
@@ -184,11 +198,40 @@ class Editor extends JPanel {
             JButton rotateLeftButton = new JButton("Rotate -1°");
             JButton rotateRightButton = new JButton("Rotate +1°");
 
+            rotateLeftButton.addActionListener(e -> {
+                DrawingPane.rotate1Degree(-1, getSelectedElement());
+                repaintCallback.run();
+            });
+            rotateRightButton.addActionListener(e -> {
+                DrawingPane.rotate1Degree(1, getSelectedElement());
+                repaintCallback.run();
+            });
+
             // Move controls
             JButton moveLeftButton = new JButton("Left 1px");
             JButton moveRightButton = new JButton("Right 1px");
             JButton moveUpButton = new JButton("Up 1px");
             JButton moveDownButton = new JButton("Down 1px");
+
+            moveLeftButton.addActionListener(e -> {
+                DrawingPane.move(-1, 0, getSelectedElement());
+                repaintCallback.run();
+            });
+
+            moveRightButton.addActionListener(e -> {
+                DrawingPane.move(1, 0, getSelectedElement());
+                repaintCallback.run();
+            });
+
+            moveUpButton.addActionListener(e -> {
+                DrawingPane.move(0, -1, getSelectedElement());
+                repaintCallback.run();
+            });
+
+            moveDownButton.addActionListener(e -> {
+                DrawingPane.move(0, 1, getSelectedElement());
+                repaintCallback.run();
+            });
 
             // Color chooser button
             colorButton = new JButton("");
@@ -226,13 +269,36 @@ class Editor extends JPanel {
         protected int baseRotationAngleDegree = 5;
         protected AffineTransform transformation;
         protected final int vertexTolPx = 30;
-        protected final double scaleFactor = 0.01;
+
+        // For transformations
+        protected double posX, posY;
+        protected double scaleX = 1.0, scaleY = 1.0;
+        protected double rotationAngle = 0.0;
+
 
         PosterElement(int dropX, int dropY, Color color) {
+            this.posX = dropX;
+            this.posY = dropY;
             transformation = new AffineTransform();
-            transformation.translate(dropX, dropY);
+            updateTransformation();
             this.color = color;
         }
+
+        protected void updateTransformation() {
+            transformation = new AffineTransform();
+
+            // Apply in order: translate -> rotate -> scale
+            transformation.translate(posX, posY);
+
+            // Rotate around center
+            double centerX = absoluteWidth / 2.0;
+            double centerY = absoluteHeight / 2.0;
+            transformation.rotate(rotationAngle, centerX, centerY);
+
+            // Apply scale
+            transformation.scale(scaleX, scaleY);
+        }
+
 
         public void bringToFront(List<PosterElement> elements) {
             if (elements.contains(this)) {
@@ -243,8 +309,15 @@ class Editor extends JPanel {
 
         public Graphics2D draw(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
+
+            // Helps to deal with resizing of window and drawing for image saving
+            AffineTransform existingTransform = g2.getTransform();
+            AffineTransform combinedTransform = new AffineTransform(existingTransform);
+            combinedTransform.concatenate(this.transformation);
+
+            g2.setTransform(combinedTransform);
+
             g2.setColor(this.color);
-            g2.setTransform(transformation);
             if (selected) {
                 drawBorder(g2);
             }
@@ -252,41 +325,35 @@ class Editor extends JPanel {
             return g2;
         }
 
-        public void rotate(int notch) {
-            double angle = Math.toRadians((-1) * notch * baseRotationAngleDegree);
-
-            int centerOffsetX = initialWidth / 2;
-            int centerOffsetY = initialHeight / 2;
-
-            transformation.rotate(angle, centerOffsetX, centerOffsetY);
+        public void rotate(int notch, boolean oneDegree) {
+            double angleDelta = Math.toRadians((-1) * notch * (oneDegree ? 1 : baseRotationAngleDegree));
+            rotationAngle += angleDelta;
+            updateTransformation();
         }
 
         public void move(int dx, int dy) {
-            // Create translation transform
-            AffineTransform translate = AffineTransform.getTranslateInstance(dx, dy);
-            // First move - then rotate
-            transformation.preConcatenate(translate);
+            posX += dx;
+            posY += dy;
+            updateTransformation();
         }
 
         public void scale(int dx, int dy, Point mouseLoc) {
             try {
-                // Get mouse position in element's coordinate system
-                Point2D inversePoint = new Point2D.Double();
-                AffineTransform inverse = transformation.createInverse();
-                inverse.transform(mouseLoc, inversePoint);
-
                 int newWidth = absoluteWidth + dx;
                 int newHeight = absoluteHeight + dy;
 
+                // Ensuring values don't turn 0 so image won't disappear
+                if (newWidth == 0) newWidth = (dx > 0) ? 1 : -1;
+                if (newHeight == 0) newHeight = (dy > 0) ? 1 : -1;
 
-                double ratioX = (double) newWidth / (double) absoluteWidth;
-                double ratioY = (double) newHeight / (double) absoluteHeight;
+                scaleX = (double) newWidth / initialWidth;
+                scaleY = (double) newHeight / initialHeight;
 
                 absoluteWidth = newWidth;
                 absoluteHeight = newHeight;
 
-                transformation.scale(ratioX, ratioY);
-            } catch (NoninvertibleTransformException e) {
+                updateTransformation();
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -308,7 +375,7 @@ class Editor extends JPanel {
                 boolean inside = inversePoint.getX() >= 0 && inversePoint.getX() <= initialWidth &&
                         inversePoint.getY() >= 0 && inversePoint.getY() <= initialHeight;
 
-                this.selected = inside;
+                this.selected = inside || nearVertex(mouseX, mouseY); // do not deselect if scaling
                 return inside;
             } catch (NoninvertibleTransformException e) {
                 throw new RuntimeException(e);
@@ -351,6 +418,39 @@ class Editor extends JPanel {
             // Draw the border slightly outside the element for visibility
             g2Copy.drawRect(-2, -2, initialWidth + 4, initialHeight + 4);
             g2Copy.dispose();
+        }
+
+
+        public List<Integer> getEdgeCoordinates() {
+            int minX, minY, maxX, maxY;
+
+            Point2D[] corners = new Point2D[]{
+                    new Point2D.Double(0, 0),                 // Top-left
+                    new Point2D.Double(initialWidth, 0),         // Top-right
+                    new Point2D.Double(0, initialHeight),        // Bottom-left
+                    new Point2D.Double(initialWidth, initialHeight) // Bottom-right
+            };
+
+            // Transform all corners using the current transformation
+            Point2D[] transformedCorners = new Point2D[4];
+            for (int i = 0; i < 4; i++) {
+                transformedCorners[i] = new Point2D.Double();
+                transformation.transform(corners[i], transformedCorners[i]);
+            }
+
+            minX = (int) transformedCorners[0].getX();
+            minY = (int) transformedCorners[0].getY();
+            maxX = (int) transformedCorners[0].getX();
+            maxY = (int) transformedCorners[0].getY();
+
+            for (int i = 1; i < 4; i++) {
+                minX = Math.min(minX, (int) transformedCorners[i].getX());
+                minY = Math.min(minY, (int) transformedCorners[i].getY());
+                maxX = Math.max(maxX, (int) transformedCorners[i].getX());
+                maxY = Math.max(maxY, (int) transformedCorners[i].getY());
+            }
+
+            return new ArrayList<>(List.of(minX, minY, maxX, maxY));
         }
     }
 
@@ -464,8 +564,7 @@ class Editor extends JPanel {
                 } catch (NoninvertibleTransformException e) {
                     throw new RuntimeException(e);
                 }
-            }
-            else {
+            } else {
                 return super.nearVertex(mouseX, mouseY);
             }
         }
@@ -475,6 +574,80 @@ class Editor extends JPanel {
     class DrawingPane extends JPanel {
         private final List<PosterElement> elements = new ArrayList<>();
         private final ControlPane controlPane;
+
+        public static void rotate1Degree(int notch, PosterElement element) {
+            element.rotate(notch, false);
+        }
+
+        public static void move(int dx, int dy, PosterElement element) {
+            element.move(dx, dy);
+        }
+
+        public List<Integer> getEdgePoints() {
+            if (elements.isEmpty())
+                return null;
+
+            // First point represent minimal x and y coordinates that Poster has, second max x and y
+            int minX = elements.getFirst().getEdgeCoordinates().getFirst();
+            int minY = elements.getFirst().getEdgeCoordinates().get(1);
+            int maxX = elements.getFirst().getEdgeCoordinates().get(2);
+            int maxY = elements.getFirst().getEdgeCoordinates().get(3);
+
+
+            for (int i = 1; i < elements.size(); i++) {
+                int newMinX = elements.get(i).getEdgeCoordinates().get(0);
+                int newMinY = elements.get(i).getEdgeCoordinates().get(1);
+                int newMaxX = elements.get(i).getEdgeCoordinates().get(2);
+                int newMaxY = elements.get(i).getEdgeCoordinates().get(3);
+
+                minX = Math.min(minX, newMinX);
+                minY = Math.min(minY, newMinY);
+                maxX = Math.max(maxX, newMaxX);
+                maxY = Math.max(maxY, newMaxY);
+            }
+
+            return new ArrayList<>(List.of(minX, minY, maxX, maxY));
+        }
+
+        public BufferedImage exportAsBufferedImage() {
+            List<Integer> edgePoints = getEdgePoints();
+            if (edgePoints == null)
+                return null;
+
+
+            Rectangle bounds = getBounds();
+
+            int minX = Math.min(edgePoints.getFirst(), bounds.x);
+            int minY = Math.min(edgePoints.get(1), bounds.y);
+            int maxX = Math.max(edgePoints.get(2), bounds.x + bounds.width);
+            int maxY = Math.max(edgePoints.get(3), bounds.y + bounds.height);
+
+            int width = maxX - minX;
+            int height = maxY - minY;
+
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = image.createGraphics();
+
+            // Set the background color
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, width, height);
+
+            // Create a transform to adjust for the new origin
+            AffineTransform offsetTransform = AffineTransform.getTranslateInstance(-minX, -minY);
+            g2d.transform(offsetTransform);
+
+            // Draw all elements with their original transformations
+            for (PosterElement e : elements) {
+                // Temporarily disable selection borders for export
+                boolean wasSelected = e.selected;
+                e.selected = false;
+                e.draw(g2d);
+                e.selected = wasSelected;
+            }
+
+            g2d.dispose();
+            return image;
+        }
 
         public DrawingPane(ControlPane controlPane) {
             this.controlPane = controlPane;
@@ -505,7 +678,7 @@ class Editor extends JPanel {
 
                             if (shapeInfo.contains("circle")) {
                                 // Create a circle shape
-                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, controlPane.currentColor,true));
+                                elements.add(new ShapeElement(dropPoint.x, dropPoint.y, controlPane.currentColor, true));
                                 repaint();
                                 return true;
                             } else if (shapeInfo.contains("square")) {
@@ -535,6 +708,7 @@ class Editor extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+
             for (PosterElement element : elements) {
                 element.draw(g);
             }
@@ -542,8 +716,39 @@ class Editor extends JPanel {
     }
 
     public class EditorWindow extends JFrame {
+        public void saveAsPNG(BufferedImage image) {
+            if (image == null)
+                return;
+
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+            fileChooser.setFileFilter(new FileNameExtensionFilter("PNG Files (*.png)", "png"));
+            int returnValue = fileChooser.showSaveDialog(this);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+
+                if (!file.getName().toLowerCase().endsWith(".png")) {
+                    file = new File(file.getAbsolutePath() + ".png");
+
+                    try {
+                        ImageIO.write(image, "png", file);
+                    } catch (Exception e) {
+                        System.err.println("Error writing file: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
         public EditorWindow() {
             setLayout(new BorderLayout());
+
+            // Create panels
+            ImageGalleryPane imageGalleryPane = new ImageGalleryPane();
+            ShapeGalleryPane shapeGalleryPane = new ShapeGalleryPane();
+            ControlPane controlPane = new ControlPane();
+            DrawingPane drawingPane = new DrawingPane(controlPane);
+            controlPane.setElementsAndRepaint(drawingPane.elements, drawingPane::repaint);
 
             // Create menu bar
             JMenuBar menuBar = new JMenuBar();
@@ -551,18 +756,15 @@ class Editor extends JPanel {
             JMenuItem loadItem = new JMenuItem("Load");
             JMenuItem saveItem = new JMenuItem("Save");
             JMenuItem savePNGItem = new JMenuItem("Save as png");
+            savePNGItem.addActionListener(e -> {
+                saveAsPNG(drawingPane.exportAsBufferedImage());
+            });
+
             fileMenu.add(loadItem);
             fileMenu.add(saveItem);
             fileMenu.add(savePNGItem);
             menuBar.add(fileMenu);
             setJMenuBar(menuBar);
-
-            // Create panels
-            ImageGalleryPane imageGalleryPane = new ImageGalleryPane();
-            ShapeGalleryPane shapeGalleryPane = new ShapeGalleryPane();
-            ControlPane controlPane = new ControlPane();
-            DrawingPane drawingPane = new DrawingPane(controlPane);
-
 
             // Left side panel to contain both galleries
             JPanel leftPanel = new JPanel(new GridLayout(2, 1));
