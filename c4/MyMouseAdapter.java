@@ -51,6 +51,7 @@ public class MyMouseAdapter extends MouseAdapter {
 
             if (moving) {
                 selectedElement.move(deltaX, deltaY);
+//                System.out.println(selectedElement.posX + " " + selectedElement.posY);
             } else if (scaling) {
                 selectedElement.scale(deltaX, deltaY, e.getPoint());
             }

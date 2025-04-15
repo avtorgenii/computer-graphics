@@ -11,11 +11,14 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.awt.image.RenderedImage;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class Editor extends JPanel {
     public static void addDragDropHandler(JLabel thumbnail, boolean isImage) {
@@ -270,7 +273,7 @@ class Editor extends JPanel {
         protected AffineTransform transformation;
         protected final int vertexTolPx = 30;
 
-        // For transformations
+        // For transformations - absolute values
         protected double posX, posY;
         protected double scaleX = 1.0, scaleY = 1.0;
         protected double rotationAngle = 0.0;
@@ -279,9 +282,26 @@ class Editor extends JPanel {
         PosterElement(int dropX, int dropY, Color color) {
             this.posX = dropX;
             this.posY = dropY;
+            this.color = color;
+
             transformation = new AffineTransform();
             updateTransformation();
+        }
+
+        PosterElement(double posX, double posY, double scaleX, double scaleY, double rotationAngle, int initialWidth, int initialHeight, Color color) {
+            this.posX = posX;
+            this.posY = posY;
+            this.scaleX = scaleX;
+            this.scaleY = scaleY;
+            this.rotationAngle = rotationAngle;
             this.color = color;
+            this.initialWidth = initialWidth;
+            this.initialHeight = initialHeight;
+            this.absoluteWidth = initialWidth; // Initialize absoluteWidth
+            this.absoluteHeight = initialHeight; // Initialize absoluteHeight
+
+            transformation = new AffineTransform();
+            updateTransformation();
         }
 
         protected void updateTransformation() {
@@ -457,11 +477,18 @@ class Editor extends JPanel {
     public class ImageElement extends PosterElement {
         Image img;
 
-        ImageElement(int dropX, int dropY, Color color, Image img) {
-            super(dropX, dropY, color);
+        ImageElement(int dropX, int dropY, Image img) {
+            super(dropX, dropY, null);
             this.img = img;
             this.initialWidth = img.getWidth(null);
             this.initialHeight = img.getHeight(null);
+            this.absoluteWidth = initialWidth;
+            this.absoluteHeight = initialHeight;
+        }
+
+        ImageElement(double posX, double posY, double scaleX, double scaleY, double rotationAngle, int initialWidth, int initialHeight, Color color, Image img) {
+            super(posX, posY, scaleX, scaleY, rotationAngle, initialWidth, initialHeight, null);
+            this.img = img;
             this.absoluteWidth = initialWidth;
             this.absoluteHeight = initialHeight;
         }
@@ -474,13 +501,25 @@ class Editor extends JPanel {
     }
 
     public class ShapeElement extends PosterElement {
-        private Shape shape;
-        private boolean isCircle;
+        private final Shape shape;
+        private final boolean isCircle;
 
         ShapeElement(int dropX, int dropY, Color color, boolean isCircle) {
             super(dropX, dropY, color);
             this.initialWidth = 150;
             this.initialHeight = 150;
+            this.absoluteWidth = initialWidth;
+            this.absoluteHeight = initialHeight;
+            this.isCircle = isCircle;
+            if (isCircle) {
+                shape = new Ellipse2D.Double(0, 0, absoluteWidth, absoluteHeight);
+            } else {
+                shape = new Rectangle2D.Double(0, 0, absoluteWidth, absoluteHeight);
+            }
+        }
+
+        ShapeElement(double posX, double posY, double scaleX, double scaleY, double rotationAngle, int initialWidth, int initialHeight, Color color, boolean isCircle) {
+            super(posX, posY, scaleX, scaleY, rotationAngle, initialWidth, initialHeight, color);
             this.absoluteWidth = initialWidth;
             this.absoluteHeight = initialHeight;
             this.isCircle = isCircle;
@@ -571,8 +610,8 @@ class Editor extends JPanel {
     }
 
     // Drawing Pane - Right panel for poster
-    class DrawingPane extends JPanel {
-        private final List<PosterElement> elements = new ArrayList<>();
+    public class DrawingPane extends JPanel {
+        public final List<PosterElement> elements = new ArrayList<>();
         private final ControlPane controlPane;
 
         public static void rotate1Degree(int notch, PosterElement element) {
@@ -610,12 +649,12 @@ class Editor extends JPanel {
         }
 
         public BufferedImage exportAsBufferedImage() {
-            List<Integer> edgePoints = getEdgePoints();
+            List<Integer> edgePoints = getEdgePoints(); // coordinates are local to viewport, can go to negative values
             if (edgePoints == null)
                 return null;
 
 
-            Rectangle bounds = getBounds();
+            Rectangle bounds = getBounds(); // Minimal values for coords are 0, 0
 
             int minX = Math.min(edgePoints.getFirst(), bounds.x);
             int minY = Math.min(edgePoints.get(1), bounds.y);
@@ -625,16 +664,21 @@ class Editor extends JPanel {
             int width = maxX - minX;
             int height = maxY - minY;
 
+            // For images below or to the right of viewport - canvas stretches out to the right and/or down
             BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = image.createGraphics();
+
+
+            // For images above or to the left of viewport - transformation is applied to move images to the right and/or down so they would be drawn on the canvas
+            AffineTransform offsetTransform = AffineTransform.getTranslateInstance(-minX, -minY);
+            System.out.println(minX + " " + minY);
+            g2d.transform(offsetTransform);
+
 
             // Set the background color
             g2d.setColor(Color.WHITE);
             g2d.fillRect(0, 0, width, height);
 
-            // Create a transform to adjust for the new origin
-            AffineTransform offsetTransform = AffineTransform.getTranslateInstance(-minX, -minY);
-            g2d.transform(offsetTransform);
 
             // Draw all elements with their original transformations
             for (PosterElement e : elements) {
@@ -668,7 +712,7 @@ class Editor extends JPanel {
                         // Check if the data is an image
                         if (support.isDataFlavorSupported(DataFlavor.imageFlavor)) {
                             Image img = (Image) support.getTransferable().getTransferData(DataFlavor.imageFlavor);
-                            elements.add(new ImageElement(dropPoint.x, dropPoint.y, controlPane.currentColor, img));
+                            elements.add(new ImageElement(dropPoint.x, dropPoint.y, img));
                             repaint();
                             return true;
                         }
@@ -740,6 +784,230 @@ class Editor extends JPanel {
             }
         }
 
+        public void saveAsAVT(DrawingPane drawingPane) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+            // Filter for your custom extension
+            fileChooser.setFileFilter(new FileNameExtensionFilter("AvtX Files (*.avtx2)", "avtx2"));
+            int returnValue = fileChooser.showSaveDialog(this);
+
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                // Ensure the file has the correct extension
+                if (!file.getName().toLowerCase().endsWith(".avtx2")) {
+                    file = new File(file.getAbsolutePath() + ".avtx2");
+                }
+
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                    List<PosterElement> elements = drawingPane.elements;
+
+                    int canvasWidth = drawingPane.getWidth();
+                    int canvasHeight = drawingPane.getHeight();
+
+                    writer.write(String.format("<object=canvas width=%d height=%d>", canvasWidth, canvasHeight));
+                    writer.newLine();
+
+                    for (PosterElement element : elements) {
+                        int rgb;
+                        if (element.color != null) {
+                            rgb = element.color.getRGB();
+                        } else {
+                            rgb = -1;
+                        }
+
+                        double angleDegrees = element.rotationAngle;
+
+                        String commonProperties = String.format(
+                                "x=%f y=%f scaleX=%f scaleY=%f angle=%f color=%s width=%d height=%d",
+                                element.posX, element.posY,
+                                element.scaleX, element.scaleY,
+                                angleDegrees,
+                                rgb,
+                                element.initialWidth,
+                                element.initialHeight
+                        );
+
+                        if (element instanceof ImageElement imgElement) {
+                            String pixelsBase64 = "";
+                            try {
+                                Image img = imgElement.img;
+                                BufferedImage bufferedImage = new BufferedImage(
+                                        img.getWidth(null),
+                                        img.getHeight(null),
+                                        BufferedImage.TYPE_INT_ARGB
+                                );
+
+                                // Draw the original image onto the buffered image
+                                Graphics2D g2d = bufferedImage.createGraphics();
+                                g2d.drawImage(img, 0, 0, null);
+                                g2d.dispose();
+
+                                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                                ImageIO.write(bufferedImage, "png", outputStream);
+                                byte[] imageBytes = outputStream.toByteArray();
+                                pixelsBase64 = Base64.getEncoder().encodeToString(imageBytes);
+                            } catch (IOException e) {
+                                System.err.println("Warning: Could not encode image data for saving: " + e.getMessage());
+                                e.printStackTrace();
+                                pixelsBase64 = "ENCODING_ERROR";
+                            }
+
+                            writer.write(String.format("<object=image %s pixels=%s>", commonProperties, pixelsBase64));
+                            writer.newLine();
+                        } else if (element instanceof ShapeElement shapeElement) {
+                            String type = shapeElement.isCircle ? "circle" : "rectangle";
+
+                            writer.write(String.format("<object=%s %s isCircle=%b>",
+                                    type, commonProperties, shapeElement.isCircle));
+                            writer.newLine();
+                        }
+                    }
+                    System.out.println("Poster saved successfully to " + file.getName());
+
+                } catch (IOException e) {
+                    System.err.println("Error writing AVT file: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(this,
+                            "Could not save the file.\nError: " + e.getMessage(),
+                            "Save Error",
+                            JOptionPane.ERROR_MESSAGE);
+                } catch (Exception e) {
+                    System.err.println("An unexpected error occurred during saving: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(this,
+                            "An unexpected error occurred while saving.\nError: " + e.getMessage(),
+                            "Save Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+
+        public void loadFromAVT(DrawingPane drawingPane) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+            fileChooser.setFileFilter(new FileNameExtensionFilter("AvtX Files (*.avtx2)", "avtx2"));
+            int returnValue = fileChooser.showOpenDialog(this);
+
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                    // Clear existing elements
+                    drawingPane.elements.clear();
+
+                    String line;
+                    Pattern canvasPattern = Pattern.compile("<object=canvas width=(\\d+) height=(\\d+)>");
+                    Pattern commonPropsPattern = Pattern.compile("x=([\\d.\\-]+) y=([\\d.\\-]+) scaleX=([\\d.\\-]+) scaleY=([\\d.\\-]+) angle=([\\d.\\-]+) color=(-?\\d+) width=(\\d+) height=(\\d+)");
+                    Pattern imagePattern = Pattern.compile("<object=image (.*?) pixels=(.+)>");
+                    Pattern shapePattern = Pattern.compile("<object=(circle|rectangle) (.*?) isCircle=(true|false)>");
+
+                    // Read the canvas size first
+                    line = reader.readLine();
+                    if (line != null) {
+                        Matcher canvasMatcher = canvasPattern.matcher(line);
+                        if (canvasMatcher.find()) {
+                            int width = Integer.parseInt(canvasMatcher.group(1));
+                            int height = Integer.parseInt(canvasMatcher.group(2));
+                            drawingPane.setPreferredSize(new Dimension(width, height));
+                        }
+                    }
+
+                    // Read all elements
+                    while ((line = reader.readLine()) != null) {
+                        // Handle image elements
+                        Matcher imageMatcher = imagePattern.matcher(line);
+                        if (imageMatcher.find()) {
+                            String properties = imageMatcher.group(1).replace(",", ".");
+                            String base64Pixels = imageMatcher.group(2);
+
+                            Matcher propsMatcher = commonPropsPattern.matcher(properties);
+                            if (propsMatcher.find()) {
+                                drawingPane.elements.add(createImageElement(propsMatcher, base64Pixels));
+                                System.out.println(drawingPane.elements.size());
+                            }
+                            continue;
+                        }
+
+                        // Handle shape elements
+                        Matcher shapeMatcher = shapePattern.matcher(line);
+                        if (shapeMatcher.find()) {
+                            String shapeType = shapeMatcher.group(1);
+                            String properties = shapeMatcher.group(2).replace(",", ".");
+                            boolean isCircle = Boolean.parseBoolean(shapeMatcher.group(3));
+
+                            Matcher propsMatcher = commonPropsPattern.matcher(properties);
+                            if (propsMatcher.find()) {
+                                drawingPane.elements.add(createShapeElement(propsMatcher, isCircle));
+                                System.out.println(drawingPane.elements.size());
+                            }
+                        }
+                    }
+
+                    // Repaint to show loaded elements
+                    drawingPane.repaint();
+                    System.out.println("Poster loaded successfully from " + file.getName());
+
+                } catch (IOException e) {
+                    System.err.println("Error reading AVT file: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(this,
+                            "Could not load the file.\nError: " + e.getMessage(),
+                            "Load Error",
+                            JOptionPane.ERROR_MESSAGE);
+                } catch (Exception e) {
+                    System.err.println("An unexpected error occurred during loading: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(this,
+                            "An unexpected error occurred while loading.\nError: " + e.getMessage(),
+                            "Load Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+
+        private ImageElement createImageElement(Matcher matcher, String base64Pixels) throws IOException {
+            double posX = Double.parseDouble(matcher.group(1));
+            double posY = Double.parseDouble(matcher.group(2));
+            double scaleX = Double.parseDouble(matcher.group(3));
+            double scaleY = Double.parseDouble(matcher.group(4));
+            double angle = Double.parseDouble(matcher.group(5));
+            int colorValue = Integer.parseInt(matcher.group(6));
+            int width = Integer.parseInt(matcher.group(7));
+            int height = Integer.parseInt(matcher.group(8));
+
+            if (base64Pixels.equals("ENCODING_ERROR")) {
+                throw new IOException("Cannot load image with encoding error");
+            }
+
+            // Decode the Base64 string back to an image
+            byte[] imageBytes = Base64.getDecoder().decode(base64Pixels);
+            ByteArrayInputStream bis = new ByteArrayInputStream(imageBytes);
+            BufferedImage bufferedImage = ImageIO.read(bis);
+
+            // Create the image element
+            Color elementColor = colorValue != -1 ? new Color(colorValue) : null;
+            ImageElement imgElement = new ImageElement(posX, posY, scaleX, scaleY, angle, width, height, elementColor, bufferedImage);
+            return imgElement;
+        }
+
+        private ShapeElement createShapeElement(Matcher matcher, boolean isCircle) {
+            double posX = Double.parseDouble(matcher.group(1));
+            double posY = Double.parseDouble(matcher.group(2));
+            double scaleX = Double.parseDouble(matcher.group(3));
+            double scaleY = Double.parseDouble(matcher.group(4));
+            double angle = Double.parseDouble(matcher.group(5));
+            int colorValue = Integer.parseInt(matcher.group(6));
+            int width = Integer.parseInt(matcher.group(7));
+            int height = Integer.parseInt(matcher.group(8));
+
+            Color color = new Color(colorValue);
+
+            // Create the shape element
+            ShapeElement shapeElement = new ShapeElement(posX, posY, scaleX, scaleY, angle, width, height, color, isCircle);
+            return shapeElement;
+        }
+
         public EditorWindow() {
             setLayout(new BorderLayout());
 
@@ -756,9 +1024,9 @@ class Editor extends JPanel {
             JMenuItem loadItem = new JMenuItem("Load");
             JMenuItem saveItem = new JMenuItem("Save");
             JMenuItem savePNGItem = new JMenuItem("Save as png");
-            savePNGItem.addActionListener(e -> {
-                saveAsPNG(drawingPane.exportAsBufferedImage());
-            });
+            savePNGItem.addActionListener(e -> saveAsPNG(drawingPane.exportAsBufferedImage()));
+            saveItem.addActionListener(e -> saveAsAVT(drawingPane));
+            loadItem.addActionListener(e -> loadFromAVT(drawingPane));
 
             fileMenu.add(loadItem);
             fileMenu.add(saveItem);
