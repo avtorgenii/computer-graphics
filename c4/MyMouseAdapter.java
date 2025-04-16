@@ -53,7 +53,7 @@ public class MyMouseAdapter extends MouseAdapter {
                 selectedElement.move(deltaX, deltaY);
 //                System.out.println(selectedElement.posX + " " + selectedElement.posY);
             } else if (scaling) {
-                selectedElement.scale(deltaX, deltaY, e.getPoint());
+                selectedElement.scale(deltaX, deltaY);
             }
 
             lastMousePosition.setLocation(x, y);

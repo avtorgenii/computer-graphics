@@ -11,7 +11,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -285,7 +284,7 @@ class Editor extends JPanel {
             this.color = color;
 
             transformation = new AffineTransform();
-            updateTransformation();
+            transformation.translate(posX, posY);
         }
 
         PosterElement(double posX, double posY, double scaleX, double scaleY, double rotationAngle, int initialWidth, int initialHeight, Color color) {
@@ -301,22 +300,35 @@ class Editor extends JPanel {
             this.absoluteHeight = initialHeight; // Initialize absoluteHeight
 
             transformation = new AffineTransform();
-            updateTransformation();
+
+            transformation.translate(posX, posY);
+
+//            move((int) posX, (int) posY);
+//            rotate((int) rotationAngle, false);
+//            scale((int) scaleX, (int) scaleY, null);
+
+
+//            updateTransformation();
         }
 
         protected void updateTransformation() {
             transformation = new AffineTransform();
 
-            // Apply in order: translate -> rotate -> scale
+            // The transformations are applied in reverse order from how they're written
+            // Translate to the position
             transformation.translate(posX, posY);
 
-            // Rotate around center
-            double centerX = absoluteWidth / 2.0;
-            double centerY = absoluteHeight / 2.0;
+            // Rotate around element's center
+            double centerX = initialWidth / 2.0;
+            double centerY = initialHeight / 2.0;
             transformation.rotate(rotationAngle, centerX, centerY);
 
-            // Apply scale
+            // Move to element center
+            transformation.translate(centerX, centerY);
+            // Scale
             transformation.scale(scaleX, scaleY);
+            // Move back from center
+            transformation.translate(-centerX, -centerY);
         }
 
 
@@ -348,16 +360,25 @@ class Editor extends JPanel {
         public void rotate(int notch, boolean oneDegree) {
             double angleDelta = Math.toRadians((-1) * notch * (oneDegree ? 1 : baseRotationAngleDegree));
             rotationAngle += angleDelta;
-            updateTransformation();
+
+            // Rotate around element's center
+            double centerX = initialWidth / 2.0;
+            double centerY = initialHeight / 2.0;
+            transformation.rotate(angleDelta, centerX, centerY);
         }
 
         public void move(int dx, int dy) {
             posX += dx;
             posY += dy;
-            updateTransformation();
+
+            double centerX = initialWidth / 2.0;
+            double centerY = initialHeight / 2.0;
+            transformation.rotate(-rotationAngle, centerX, centerY);
+            transformation.translate(dx / scaleX, dy / scaleY);
+            transformation.rotate(rotationAngle, centerX, centerY);
         }
 
-        public void scale(int dx, int dy, Point mouseLoc) {
+        public void scale(int dx, int dy) {
             try {
                 int newWidth = absoluteWidth + dx;
                 int newHeight = absoluteHeight + dy;
@@ -366,13 +387,30 @@ class Editor extends JPanel {
                 if (newWidth == 0) newWidth = (dx > 0) ? 1 : -1;
                 if (newHeight == 0) newHeight = (dy > 0) ? 1 : -1;
 
+
+                double centerX = initialWidth / 2.0;
+                double centerY = initialHeight / 2.0;
+                transformation.rotate(-rotationAngle, centerX, centerY);
+                // Move to element center
+                transformation.translate(centerX, centerY);
+                transformation.scale(1 / scaleX, 1/ scaleY);
+                transformation.translate(-centerX, -centerY);
+
+                transformation.rotate(rotationAngle, centerX, centerY);
+
                 scaleX = (double) newWidth / initialWidth;
                 scaleY = (double) newHeight / initialHeight;
 
                 absoluteWidth = newWidth;
                 absoluteHeight = newHeight;
 
-                updateTransformation();
+                transformation.rotate(-rotationAngle, centerX, centerY);
+
+                transformation.translate(centerX, centerY);
+                transformation.scale(scaleX, scaleY);
+                transformation.translate(-centerX, -centerY);
+
+                transformation.rotate(rotationAngle, centerX, centerY);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
