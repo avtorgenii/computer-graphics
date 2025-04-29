@@ -1,0 +1,21 @@
+{
+  "lightSources": [
+    {
+      "location": [5, 5, 5],
+      "intensities": [0.4, 0.7, 0.2]
+    },
+    {
+
+    }
+  ],
+  "ambientIntensities": [1, 1, 1],
+
+  "diffuseReflection": [],
+  "specularReflection": [],
+  "ambientLightDiffuseReflection": [],
+  "selfLuminance": [],
+  "glossiness": 0.5,
+
+  "imageResolution": [500, 500],
+  "fileName": "c6/render.png"
+}
