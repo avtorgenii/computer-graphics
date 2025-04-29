@@ -1,0 +1,28 @@
+{
+  "lightSources": [
+    {
+      "location": [200, 200, 100],
+      "intensities": [0.7, 0.7, 0.7]
+    },
+    {
+      "location": [-150, 100, 50],
+      "intensities": [0.3, 0.3, 0.3]
+    },
+    {
+      "location": [0, -180, 150],
+      "intensities": [0.2, 0.2, 0.25]
+    }
+  ],
+  "ambientIntensities": [0.3, 0.3, 0.3],
+  "attenuationCoefs": [1, 0, 0],
+
+  "diffuseReflection": [0.85, 0.85, 0.85],
+  "specularReflection": [0.1, 0.1, 0.1],
+  "glossiness": 2,
+  "ambientLightDiffuseReflection": [0.7, 0.7, 0.7],
+  "selfLuminance": [0, 0, 0],
+  "transparency": [0, 0, 0],
+
+  "imageResolution": [700, 700],
+  "fileName": "c6/renders/pastelGypsum.png"
+}

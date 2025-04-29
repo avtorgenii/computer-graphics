@@ -12,8 +12,9 @@ public class Phong {
     public static class Scene {
         public List<LightSource> lightSources;
         public double[] ambientIntensities;
+        public double[] attenuationCoefs;
 
-        public double[]diffuseReflection;
+        public double[] diffuseReflection;
         public double[] specularReflection;
         public double[] ambientLightDiffuseReflection;
         public double[] selfLuminance;
@@ -85,6 +86,13 @@ public class Phong {
         return multiplyVector(v, 1.0 / length);
     }
 
+    public static double[] reflectVector(double[] vector, double[] normal) {
+        // Assumes both vectors are normalized
+        double dot = dotProduct(vector, normal);
+        double[] scaledNormal = multiplyVector(normal, 2 * dot);
+        return subtractVectors(vector, scaledNormal);
+    }
+
     private static Color vectorToColor(double[] v) {
         // Clamp color values to the range [0, 1]
         int r = (int) Math.min(255, Math.max(0, v[0] * 255));
@@ -94,16 +102,16 @@ public class Phong {
     }
 
     // Rendering stuff
-    public static double attenuation(double r) {
+    public static double attenuation(double [] coefs, double r) {
         double c2, c1, c0;
-        c2 = 1.0;
-        c1 = 1.0;
-        c0 = 1.0;
+        c2 = coefs[2];
+        c1 = coefs[1];
+        c0 = coefs[0];
 
         return Math.min(1.0, 1.0 / ((c2 * r * r) + (c1 * r) + c0));
     }
 
-    public static double[] applyPhongForHitPoint(Scene scene, double [] hitPoint, double[] normal) {
+    public static double[] applyPhongForHitPoint(Scene scene, double [] hitPoint, double[] normal, double [] observer) {
         double [] res = new double[3]; //rgb
 
 
@@ -115,13 +123,13 @@ public class Phong {
             res[i] += scene.selfLuminance[i];
 
             // Ambient
-            res[i] += scene.ambientLightDiffuseReflection[i];
+            res[i] += scene.ambientLightDiffuseReflection[i] * scene.ambientIntensities[i];
 
 
             // Light sources stuff
-            for (int j = 0;j < scene.lightSources.size();j++) {
+            for (int j = 0; j < scene.lightSources.size(); j++) {
                 double lightSourceIntensity = scene.lightSources.get(j).intensities[i];
-                double [] lightSourceLoc = scene.lightSources.get(j).location;
+                double[] lightSourceLoc = scene.lightSources.get(j).location;
 
                 // Distance to light source
                 double r = vectorLength(subtractVectors(lightSourceLoc, hitPoint));
@@ -129,37 +137,28 @@ public class Phong {
                 // Unit vector to light source from point
                 double[] I = normalize(subtractVectors(lightSourceLoc, hitPoint));
 
-                diffuseIntermediate = dotProduct(normal, I);
-                diffuseIntermediate *= attenuation(r);
-                diffuseIntermediate *= lightSourceIntensity;
-
-
-
-
-
-
-                // Attenuation
-
-
-                //
-
-
-
-
                 // Diffuse reflection
-
-
+                double diffuseContribution = Math.max(0, dotProduct(normal, I));
+                diffuseContribution *= attenuation(scene.attenuationCoefs, r);
+                diffuseContribution *= lightSourceIntensity;
+                diffuseIntermediate += diffuseContribution;
 
                 // Specular reflection
+                // Unit vector from point to observer
+                double[] Os = reflectVector(normalize(subtractVectors(observer, hitPoint)), normal);
+
+                double specularContribution = Math.pow(Math.max(0, dotProduct(I, Os)), scene.glossiness);
+                specularContribution *= attenuation(scene.attenuationCoefs, r);
+                specularContribution *= lightSourceIntensity;
+                specularIntermediate += specularContribution;
             }
 
 
             res[i] += diffuseIntermediate * scene.diffuseReflection[i];
             res[i] += specularIntermediate * scene.specularReflection[i];
 
-            // Transparency
-
-
+            // Transparency - assumes background is black
+            res[i] *= (1 - scene.transparency[i]);
         }
 
 
@@ -170,6 +169,7 @@ public class Phong {
     public static void renderSceneAndSave(Scene scene) throws IOException {
         int width = scene.imageResolution[0];
         int height = scene.imageResolution[1];
+        double [] observer = new double [] {0, 0, -100};
 
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
@@ -193,9 +193,12 @@ public class Phong {
                     double[] normal = sphere.normalAt(hitPoint);
 
                     // Visualize normals as RGB
-                    double[] colorVector = applyPhongForHitPoint(scene, hitPoint, normal);
+                    double[] colorVector = applyPhongForHitPoint(scene, hitPoint, normal, observer);
 
                     pixelColor = vectorToColor(colorVector);
+                }
+                else{
+                    pixelColor = Color.BLACK;
                 }
 
                 image.setRGB(j, i, pixelColor.getRGB());
@@ -221,11 +224,28 @@ public class Phong {
     }
 
     public static void main(String[] args) throws IOException {
-        // Read data from json
-        ObjectMapper mapper = new ObjectMapper();
-        Scene scene = mapper.readValue(new File("c6/scene.json"), Scene.class);
+        String[] presetNames = {
+                "c6/scenes/whiteGypsum.json",
+                "c6/scenes/pastelGypsum.json",
+                "c6/scenes/mattePlasticRed.json",
+                "c6/scenes/mattePlasticGreen.json",
+                "c6/scenes/glossyPlasticWhite.json",
+                "c6/scenes/glossyPlasticYellow.json"
+        };
 
-        renderSceneAndSave(scene);
-        showImage(scene.fileName, scene.imageResolution[0], scene.imageResolution[1]);
+        ObjectMapper mapper = new ObjectMapper();
+
+        for (String presetName : presetNames) {
+            System.out.println("Rendering preset: " + presetName);
+
+            try {
+                Scene scene = mapper.readValue(new File(presetName), Scene.class);
+
+                renderSceneAndSave(scene);
+            } catch (IOException e) {
+            }
+        }
+
+        showImage("c6/renders/whiteGypsum.png", 700, 700);
     }
 }

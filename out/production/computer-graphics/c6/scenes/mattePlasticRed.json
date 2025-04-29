@@ -1,0 +1,28 @@
+{
+  "lightSources": [
+    {
+      "location": [200, 200, 100],
+      "intensities": [0.8, 0.8, 0.8]
+    },
+    {
+      "location": [-150, 100, 80],
+      "intensities": [0.4, 0.4, 0.4]
+    },
+    {
+      "location": [50, -180, 120],
+      "intensities": [0.3, 0.3, 0.3]
+    }
+  ],
+  "ambientIntensities": [0.2, 0.2, 0.2],
+  "attenuationCoefs": [1, 0, 0],
+
+  "diffuseReflection": [0.9, 0.1, 0.1],
+  "specularReflection": [0.15, 0.15, 0.15],
+  "glossiness": 5,
+  "ambientLightDiffuseReflection": [0.8, 0.1, 0.1],
+  "selfLuminance": [0, 0, 0],
+  "transparency": [0, 0, 0],
+
+  "imageResolution": [700, 700],
+  "fileName": "c6/renders/mattePlasticRed.png"
+}
